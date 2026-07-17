@@ -1,13 +1,14 @@
 # Sweldo
 
-**Payroll that keeps its promise.** Sweldo is a non-custodial payroll app on Stellar Testnet. An employer signs once to lock an entire pay schedule into protocol-native claimable balances; employees claim each tranche directly to their own wallet when it unlocks.
+**Payroll that keeps its promise.** Sweldo is a non-custodial payroll app on Stellar Testnet. An employer signs once to lock an entire pay schedule into protocol-native claimable balances; employees claim each payout (tranche) directly to their own wallet when it unlocks. Employers can cancel only future payouts before payday, while unlocked pay remains protected.
 
 ## Why Stellar
 
 Sweldo uses Stellar's native building blocks instead of a custom custody service or smart contract:
 
-- `createClaimableBalance` locks each salary tranche with an absolute-time predicate.
+- `createClaimableBalance` locks each salary payout with mutually exclusive employee and employer time predicates.
 - `claimClaimableBalance` moves unlocked pay directly to the employee.
+- Before payday, the employer can use the same operation to return an unearned future payout to the funding wallet.
 - Freighter signs every transaction; the app never sees private keys.
 - Horizon provides the employee's live vesting timeline.
 - Issued assets use standard Stellar trustlines.
@@ -32,6 +33,8 @@ The app uses XLM by default so the complete demo works without asset setup. To u
 5. Watch the countdown reach zero, then claim the unlocked balance.
 6. Follow the Stellar Expert links to verify every transaction and balance on-chain.
 
+To demonstrate offboarding, create a schedule with multiple future payouts, stay connected as the employer, and select **Cancel remaining payroll** in Recent schedules. The app excludes payouts whose payday has already arrived.
+
 ## Configuration
 
 | Variable | Purpose |
@@ -43,12 +46,14 @@ Both variables are required for issued-asset mode. If omitted, Sweldo uses nativ
 
 ## Architecture
 
-The app is fully client-side. React builds operations, Freighter signs them, and the signed transaction is submitted to Stellar Testnet through Horizon. Only cosmetic schedule labels are stored in localStorage.
+The app is fully client-side. React builds operations, Freighter signs them, and the signed transaction is submitted to Stellar Testnet through Horizon. Schedule labels and the on-chain balance IDs needed for the local cancellation controls are stored in localStorage; private keys never enter the app.
 
 ## Safety and current scope
 
 - Testnet only; this build does not represent real USDC or production payroll.
-- Schedules are irrevocable once funded. This MVP deliberately does not give employers an unconditional reclaim path.
+- New schedules allow the employer to cancel only future payouts before payday. At payday, the employer predicate expires and the employee predicate activates.
+- Schedules created before cancellation support remain irrevocable because existing on-chain claimants cannot be edited.
+- Unlocked or claimed pay cannot be cancelled through Sweldo.
 - One transaction supports up to 50 tranches in the UI, leaving room below Stellar's 100-operation limit.
 - A claimable balance adds ledger reserve requirements for its creator.
 - Testnet can reset, so demo accounts and balances may need reseeding.
@@ -58,7 +63,7 @@ The app is fully client-side. React builds operations, Freighter signs them, and
 - Local anchor integrations and real regional assets
 - Claim-and-convert through Stellar path payments
 - Bulk payroll import and team administration
-- Optional, policy-bound offboarding and reclaim flows
+- Team-level offboarding policies and approval workflows
 - Mainnet hardening, compliance, and independent security review
 
 Built for the APAC Stellar Hackathon 2026.

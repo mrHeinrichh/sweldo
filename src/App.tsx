@@ -15,6 +15,7 @@ import {
   Menu,
   Plus,
   RefreshCw,
+  RotateCcw,
   ShieldCheck,
   Sparkles,
   Users,
@@ -25,6 +26,7 @@ import {
 import {
   addTrustline,
   assetLabel,
+  cancelBalances,
   claimBalance,
   configuredAsset,
   connectWallet,
@@ -50,6 +52,14 @@ type ScheduleMeta = {
   asset: string
   createdAt: string
   hash: string
+  employer?: string
+  balanceIds?: string[]
+  firstUnlock?: string
+  intervalSeconds?: number
+  revocable?: boolean
+  cancelledAt?: string
+  cancelHash?: string
+  cancelledPayouts?: number
 }
 type PayrollRecipient = {
   id: string
@@ -90,6 +100,10 @@ function readSchedules(): ScheduleMeta[] {
 
 function saveSchedules(schedules: ScheduleMeta[]) {
   localStorage.setItem(META_KEY, JSON.stringify([...schedules, ...readSchedules()]))
+}
+
+function writeSchedules(schedules: ScheduleMeta[]) {
+  localStorage.setItem(META_KEY, JSON.stringify(schedules))
 }
 
 function createPayrollRecipient(total = '1200'): PayrollRecipient {
@@ -273,10 +287,50 @@ function Employer({ wallet, connect }: { wallet: WalletState | null; connect: ()
   const [notice, setNotice] = useState<{ type: 'success' | 'error'; text: string; hash?: string } | null>(null)
   const [lastProof, setLastProof] = useState<PayrollProof | null>(null)
   const [schedules, setSchedules] = useState(readSchedules)
+  const [activeBalanceIds, setActiveBalanceIds] = useState<string[]>([])
+  const [balancesLoaded, setBalancesLoaded] = useState(false)
+  const [cancelling, setCancelling] = useState('')
+  const [now, setNow] = useState(Date.now())
   const totalLocked = recipients.reduce((sum, recipient) => sum + Number(recipient.total || 0), 0)
   const balanceCount = recipients.length * tranches
   const employeeLabel = recipients.length === 1 ? 'employee' : 'employees'
   const amountEach = (total: string) => Number(total) > 0 && tranches > 0 ? (Number(total) / tranches).toFixed(7).replace(/\.?0+$/, '') : '0'
+  const activeBalanceSet = useMemo(() => new Set(activeBalanceIds), [activeBalanceIds])
+
+  const refreshEmployerBalances = useCallback(async () => {
+    if (!wallet?.address) {
+      setActiveBalanceIds([])
+      setBalancesLoaded(false)
+      return
+    }
+    setBalancesLoaded(false)
+    try {
+      const records = await getClaimableBalances(wallet.address)
+      setActiveBalanceIds(records.map((record) => record.balance_id))
+    } catch {
+      setActiveBalanceIds([])
+    } finally {
+      setBalancesLoaded(true)
+    }
+  }, [wallet?.address])
+
+  useEffect(() => {
+    void refreshEmployerBalances()
+  }, [refreshEmployerBalances])
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 1000)
+    return () => window.clearInterval(timer)
+  }, [])
+
+  function cancellableIds(schedule: ScheduleMeta, availableIds = activeBalanceSet, at = now) {
+    if (!schedule.revocable || !schedule.balanceIds?.length || !schedule.firstUnlock || !schedule.intervalSeconds) return []
+    const firstPayday = new Date(schedule.firstUnlock).getTime()
+    return schedule.balanceIds.filter((balanceId, index) => (
+      availableIds.has(balanceId)
+      && firstPayday + index * schedule.intervalSeconds! * 1000 > at
+    ))
+  }
 
   function updateRecipient(id: string, patch: Partial<PayrollRecipient>) {
     setRecipients((current) => current.map((recipient) => recipient.id === id ? { ...recipient, ...patch } : recipient))
@@ -308,7 +362,7 @@ function Employer({ wallet, connect }: { wallet: WalletState | null; connect: ()
         asset: ASSET,
       })
       const createdAt = new Date().toISOString()
-      saveSchedules(payrollRows.map((recipient) => ({
+      const createdSchedules = payrollRows.map((recipient, index) => ({
         id: crypto.randomUUID(),
         employee: recipient.employee,
         name: recipient.name || 'Team member',
@@ -317,8 +371,16 @@ function Employer({ wallet, connect }: { wallet: WalletState | null; connect: ()
         asset: ASSET_LABEL,
         createdAt,
         hash: result.hash,
-      })))
+        employer: wallet.address,
+        balanceIds: result.balanceIds.slice(index * tranches, (index + 1) * tranches),
+        firstUnlock: firstUnlock.toISOString(),
+        intervalSeconds: seconds,
+        revocable: true,
+      }))
+      saveSchedules(createdSchedules)
       setSchedules(readSchedules())
+      setActiveBalanceIds((current) => [...new Set([...current, ...result.balanceIds])])
+      setBalancesLoaded(true)
       setLastProof({
         hash: result.hash,
         total: String(payrollRows.reduce((sum, recipient) => sum + Number(recipient.total), 0)),
@@ -328,11 +390,47 @@ function Employer({ wallet, connect }: { wallet: WalletState | null; connect: ()
         firstUnlock: firstUnlock.toISOString(),
         asset: ASSET_LABEL,
       })
-      setNotice({ type: 'success', text: `Payroll locked for ${payrollRows.length} ${payrollRows.length === 1 ? 'employee' : 'employees'} with ${tranches} payouts each (${tranches} tranches).`, hash: result.hash })
+      setNotice({ type: 'success', text: `Payroll locked for ${payrollRows.length} ${payrollRows.length === 1 ? 'employee' : 'employees'}. Future payouts can be cancelled before payday.`, hash: result.hash })
     } catch (error) {
       setNotice({ type: 'error', text: friendlyError(error) })
     } finally {
       setBusy(false)
+    }
+  }
+
+  async function cancelSchedule(schedule: ScheduleMeta) {
+    if (!wallet) return connect()
+    if (wallet.network !== 'TESTNET') return setNotice({ type: 'error', text: 'Switch Freighter to Testnet, then reconnect.' })
+    if (schedule.employer !== wallet.address) return setNotice({ type: 'error', text: 'Connect the employer wallet that originally funded this payroll.' })
+    const preview = cancellableIds(schedule, activeBalanceSet, Date.now())
+    if (preview.length === 0) return setNotice({ type: 'error', text: 'No future payouts remain. Payouts at or past payday cannot be cancelled.' })
+    const confirmed = window.confirm(`Cancel the remaining future payouts for ${schedule.name}? Sweldo will re-check all ${preview.length} eligible ${preview.length === 1 ? 'payout' : 'payouts'} on Stellar, then return them to your wallet. Payouts at or past payday stay protected.`)
+    if (!confirmed) return
+    setCancelling(schedule.id)
+    setNotice(null)
+    try {
+      const latestBalances = await getClaimableBalances(wallet.address)
+      const latestIds = latestBalances.map((record) => record.balance_id)
+      const latestSet = new Set(latestIds)
+      setActiveBalanceIds(latestIds)
+      setBalancesLoaded(true)
+      const balanceIds = cancellableIds(schedule, latestSet, Date.now())
+      if (balanceIds.length === 0) throw new Error('No future payouts remain. Payouts at or past payday cannot be cancelled.')
+      const result = await cancelBalances(wallet.address, balanceIds)
+      const nextSchedules = readSchedules().map((saved) => saved.id === schedule.id ? {
+        ...saved,
+        cancelledAt: new Date().toISOString(),
+        cancelHash: result.hash,
+        cancelledPayouts: (saved.cancelledPayouts ?? 0) + balanceIds.length,
+      } : saved)
+      writeSchedules(nextSchedules)
+      setSchedules(nextSchedules)
+      setActiveBalanceIds((current) => current.filter((balanceId) => !balanceIds.includes(balanceId)))
+      setNotice({ type: 'success', text: `${balanceIds.length} future ${balanceIds.length === 1 ? 'payout was' : 'payouts were'} cancelled and returned to your wallet.`, hash: result.hash })
+    } catch (error) {
+      setNotice({ type: 'error', text: friendlyError(error) })
+    } finally {
+      setCancelling('')
     }
   }
 
@@ -362,12 +460,30 @@ function Employer({ wallet, connect }: { wallet: WalletState | null; connect: ()
             <div className="limit-note"><Clock3 size={16} /><span>{balanceCount}/100 claimable balances in this transaction</span></div>
           </div>
           <div className="schedule-summary"><span><Users size={17} /> {recipients.length} {employeeLabel} × <strong>{tranches} payouts (tranches)</strong></span><span>Total locked <strong>{formatAmount(totalLocked)} {ASSET_LABEL}</strong></span></div>
+          <div className="cancellation-policy"><RotateCcw size={17} /><div><strong>Future-payout protection</strong><span>You can cancel a future payout (tranche) before payday. At payday, the employee’s claim right activates and that payout cannot be cancelled.</span></div></div>
           <Button className="button-primary full" type="submit" loading={busy}><LockKeyhole size={17} /> {wallet ? 'Lock payroll on Stellar' : 'Connect wallet to continue'}</Button>
           <p className="fine-print"><ShieldCheck size={14} /> Funds go straight from your wallet into protocol-level claimable balances.</p>
         </form>
         <aside className="panel side-panel">
           <div className="panel-title"><div><h2>Recent schedules</h2><p>Saved locally on this device.</p></div></div>
-          {schedules.length === 0 ? <div className="empty"><div><Banknote /></div><h3>No schedules yet</h3><p>Your funded payrolls will appear here.</p></div> : <div className="schedule-list">{schedules.map((schedule) => <article key={schedule.id}><div className="avatar">{schedule.name.slice(0, 1).toUpperCase()}</div><div><strong>{schedule.name}</strong><span>{short(schedule.employee)}</span><small>{schedule.tranches} payouts (tranches) × {formatAmount(Number(schedule.total) / schedule.tranches)} {schedule.asset}</small></div><a href={`https://stellar.expert/explorer/testnet/tx/${schedule.hash}`} target="_blank" rel="noreferrer"><ExternalLink size={16} /></a></article>)}</div>}
+          {schedules.length === 0 ? <div className="empty"><div><Banknote /></div><h3>No schedules yet</h3><p>Your funded payrolls will appear here.</p></div> : <div className="schedule-list">{schedules.map((schedule) => {
+            const remaining = cancellableIds(schedule)
+            const isOriginalEmployer = Boolean(wallet && schedule.employer === wallet.address)
+            return <article key={schedule.id}>
+              <div className="avatar">{schedule.name.slice(0, 1).toUpperCase()}</div>
+              <div><strong>{schedule.name}</strong><span>{short(schedule.employee)}</span><small>{schedule.tranches} payouts (tranches) × {formatAmount(Number(schedule.total) / schedule.tranches)} {schedule.asset}</small></div>
+              <a href={`https://stellar.expert/explorer/testnet/tx/${schedule.hash}`} target="_blank" rel="noreferrer" aria-label="View payroll transaction"><ExternalLink size={16} /></a>
+              <div className={`schedule-control ${schedule.cancelledAt ? 'cancelled' : ''}`}>
+                {!schedule.revocable ? <span>Original schedule · cancellation was not enabled</span>
+                  : schedule.cancelledAt ? <><span><Check size={12} /> {schedule.cancelledPayouts} future {schedule.cancelledPayouts === 1 ? 'payout' : 'payouts'} returned</span>{schedule.cancelHash && <a href={`https://stellar.expert/explorer/testnet/tx/${schedule.cancelHash}`} target="_blank" rel="noreferrer">Cancellation proof <ExternalLink size={11} /></a>}</>
+                    : !wallet ? <span>Connect the employer wallet to manage this payroll</span>
+                      : !isOriginalEmployer ? <span>Connect the original employer wallet</span>
+                        : !balancesLoaded ? <span><LoaderCircle size={12} className="spin" /> Checking future payouts…</span>
+                          : remaining.length > 0 ? <><span>{remaining.length} future {remaining.length === 1 ? 'payout' : 'payouts'} cancellable before payday</span><Button type="button" className="button-cancel" loading={cancelling === schedule.id} onClick={() => cancelSchedule(schedule)}><RotateCcw size={13} /> Cancel remaining payroll</Button></>
+                            : <span>No cancellable future payouts remain</span>}
+              </div>
+            </article>
+          })}</div>}
           <div className="info-card"><Sparkles size={18} /><div><strong>Demo tip</strong><p>Choose “every minute” so judges can watch a payout (tranche) unlock live.</p></div></div>
         </aside>
       </div>

@@ -5,6 +5,7 @@ import {
   Networks,
   Operation,
   TransactionBuilder,
+  xdr,
 } from '@stellar/stellar-sdk'
 import { getNetwork, isConnected, requestAccess, signTransaction } from '@stellar/freighter-api'
 
@@ -105,6 +106,18 @@ async function signAndSubmit(transaction: ReturnType<TransactionBuilder['build']
   return server.submitTransaction(TransactionBuilder.fromXDR(signed.signedTxXdr, NETWORK_PASSPHRASE))
 }
 
+function createdBalanceIds(resultXdr?: string) {
+  if (!resultXdr) return []
+  const transactionResult = xdr.TransactionResult.fromXDR(resultXdr, 'base64')
+  return transactionResult.result().results().map((operationResult) => (
+    operationResult
+      .tr()
+      .createClaimableBalanceResult()
+      .balanceId()
+      .toXDR('hex')
+  ))
+}
+
 export async function createSchedule(input: {
   employer: string
   employee: string
@@ -145,22 +158,30 @@ export async function createBatchSchedule(input: {
   for (const recipient of input.recipients) {
     for (let index = 0; index < input.payouts; index += 1) {
       const unlockUnix = Math.floor(input.firstUnlock.getTime() / 1000) + index * input.intervalSeconds
-      const claimant = new Claimant(
+      const employeeClaimant = new Claimant(
         recipient.employee,
         Claimant.predicateNot(Claimant.predicateBeforeAbsoluteTime(String(unlockUnix))),
+      )
+      const employerClaimant = new Claimant(
+        input.employer,
+        Claimant.predicateBeforeAbsoluteTime(String(unlockUnix)),
       )
       builder = builder.addOperation(
         Operation.createClaimableBalance({
           asset: input.asset,
           amount: recipient.amountPerPayout,
-          claimants: [claimant],
+          claimants: [employeeClaimant, employerClaimant],
         }),
       )
     }
   }
 
   const transaction = builder.setTimeout(180).build()
-  return signAndSubmit(transaction, input.employer)
+  const result = await signAndSubmit(transaction, input.employer)
+  return {
+    ...result,
+    balanceIds: createdBalanceIds(result.result_xdr),
+  }
 }
 
 export async function claimBalance(address: string, balanceId: string) {
@@ -173,6 +194,20 @@ export async function claimBalance(address: string, balanceId: string) {
     .setTimeout(180)
     .build()
   return signAndSubmit(transaction, address)
+}
+
+export async function cancelBalances(address: string, balanceIds: string[]) {
+  if (balanceIds.length < 1) throw new Error('There are no future payouts available to cancel.')
+  if (balanceIds.length > 100) throw new Error('A Stellar transaction can cancel up to 100 payouts at once.')
+  const account = await loadAccount(address)
+  let builder = new TransactionBuilder(account, {
+    fee: '100',
+    networkPassphrase: NETWORK_PASSPHRASE,
+  })
+  for (const balanceId of balanceIds) {
+    builder = builder.addOperation(Operation.claimClaimableBalance({ balanceId }))
+  }
+  return signAndSubmit(builder.setTimeout(180).build(), address)
 }
 
 export async function addTrustline(address: string, asset: Asset) {
