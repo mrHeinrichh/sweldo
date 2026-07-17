@@ -18,6 +18,7 @@ export type WalletState = {
 }
 
 export type BalanceRecord = {
+  id: string
   balance_id: string
   amount: string
   asset: string
@@ -27,6 +28,21 @@ export type BalanceRecord = {
     destination: string
     predicate: Record<string, unknown>
   }>
+}
+
+export type ClaimHistoryRecord = {
+  id: string
+  balanceId: string
+  transactionHash?: string
+  claimedAt: string
+  amount?: string
+  asset?: string
+  source: 'stellar' | 'local'
+}
+
+export type ScheduleRecipient = {
+  employee: string
+  amountPerPayout: string
 }
 
 type FreighterError = { code?: number; message?: string; ext?: string[] }
@@ -98,25 +114,49 @@ export async function createSchedule(input: {
   intervalSeconds: number
   asset: Asset
 }) {
+  return createBatchSchedule({
+    employer: input.employer,
+    recipients: [{ employee: input.employee, amountPerPayout: input.amountPerTranche }],
+    payouts: input.tranches,
+    firstUnlock: input.firstUnlock,
+    intervalSeconds: input.intervalSeconds,
+    asset: input.asset,
+  })
+}
+
+export async function createBatchSchedule(input: {
+  employer: string
+  recipients: ScheduleRecipient[]
+  payouts: number
+  firstUnlock: Date
+  intervalSeconds: number
+  asset: Asset
+}) {
+  const operationCount = input.recipients.length * input.payouts
+  if (operationCount < 1) throw new Error('Add at least one employee before locking payroll.')
+  if (operationCount > 100) throw new Error('A Stellar transaction can include up to 100 payroll payouts. Reduce employees or payouts.')
+
   const account = await loadAccount(input.employer)
   let builder = new TransactionBuilder(account, {
     fee: '100',
     networkPassphrase: NETWORK_PASSPHRASE,
   })
 
-  for (let index = 0; index < input.tranches; index += 1) {
-    const unlockUnix = Math.floor(input.firstUnlock.getTime() / 1000) + index * input.intervalSeconds
-    const claimant = new Claimant(
-      input.employee,
-      Claimant.predicateNot(Claimant.predicateBeforeAbsoluteTime(String(unlockUnix))),
-    )
-    builder = builder.addOperation(
-      Operation.createClaimableBalance({
-        asset: input.asset,
-        amount: input.amountPerTranche,
-        claimants: [claimant],
-      }),
-    )
+  for (const recipient of input.recipients) {
+    for (let index = 0; index < input.payouts; index += 1) {
+      const unlockUnix = Math.floor(input.firstUnlock.getTime() / 1000) + index * input.intervalSeconds
+      const claimant = new Claimant(
+        recipient.employee,
+        Claimant.predicateNot(Claimant.predicateBeforeAbsoluteTime(String(unlockUnix))),
+      )
+      builder = builder.addOperation(
+        Operation.createClaimableBalance({
+          asset: input.asset,
+          amount: recipient.amountPerPayout,
+          claimants: [claimant],
+        }),
+      )
+    }
   }
 
   const transaction = builder.setTimeout(180).build()
@@ -150,7 +190,34 @@ export async function addTrustline(address: string, asset: Asset) {
 
 export async function getClaimableBalances(address: string): Promise<BalanceRecord[]> {
   const page = await server.claimableBalances().claimant(address).limit(100).order('desc').call()
-  return page.records as unknown as BalanceRecord[]
+  return page.records.map((record) => {
+    const claimableBalance = record as unknown as Omit<BalanceRecord, 'balance_id'> & { balance_id?: string }
+    return {
+      ...claimableBalance,
+      balance_id: claimableBalance.balance_id ?? claimableBalance.id,
+    }
+  })
+}
+
+export async function getClaimHistory(address: string): Promise<ClaimHistoryRecord[]> {
+  const page = await server.operations().forAccount(address).limit(50).order('desc').call()
+  return page.records
+    .filter((record) => record.type === 'claim_claimable_balance')
+    .map((record) => {
+      const operation = record as unknown as {
+        id: string
+        transaction_hash?: string
+        created_at: string
+        claimable_balance_id?: string
+      }
+      return {
+        id: operation.id,
+        balanceId: operation.claimable_balance_id ?? '',
+        transactionHash: operation.transaction_hash,
+        claimedAt: operation.created_at,
+        source: 'stellar' as const,
+      }
+    })
 }
 
 export function configuredAsset() {

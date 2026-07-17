@@ -17,6 +17,7 @@ import {
   RefreshCw,
   ShieldCheck,
   Sparkles,
+  Users,
   Wallet,
   X,
   Zap,
@@ -27,12 +28,14 @@ import {
   claimBalance,
   configuredAsset,
   connectWallet,
-  createSchedule,
+  createBatchSchedule,
   friendlyError,
+  getClaimHistory,
   getClaimableBalances,
   getXlmBalance,
   parseUnlockTime,
   type BalanceRecord,
+  type ClaimHistoryRecord,
   type WalletState,
 } from './lib/stellar'
 import './App.css'
@@ -48,10 +51,26 @@ type ScheduleMeta = {
   createdAt: string
   hash: string
 }
+type PayrollRecipient = {
+  id: string
+  name: string
+  employee: string
+  total: string
+}
+type PayrollProof = {
+  hash: string
+  total: string
+  balanceCount: number
+  employeeCount: number
+  payouts: number
+  firstUnlock: string
+  asset: string
+}
 
 const ASSET = configuredAsset()
 const ASSET_LABEL = assetLabel(ASSET)
 const META_KEY = 'sweldo-schedules-v1'
+const CLAIM_HISTORY_KEY = 'sweldo-claim-history-v1'
 
 function short(value: string, edge = 5) {
   return `${value.slice(0, edge)}…${value.slice(-edge)}`
@@ -69,8 +88,44 @@ function readSchedules(): ScheduleMeta[] {
   }
 }
 
-function saveSchedule(schedule: ScheduleMeta) {
-  localStorage.setItem(META_KEY, JSON.stringify([schedule, ...readSchedules()]))
+function saveSchedules(schedules: ScheduleMeta[]) {
+  localStorage.setItem(META_KEY, JSON.stringify([...schedules, ...readSchedules()]))
+}
+
+function createPayrollRecipient(total = '1200'): PayrollRecipient {
+  return { id: crypto.randomUUID(), name: '', employee: '', total }
+}
+
+function claimHistoryKey(address: string) {
+  return `${CLAIM_HISTORY_KEY}:${address}`
+}
+
+function readLocalClaimHistory(address: string): ClaimHistoryRecord[] {
+  try {
+    return JSON.parse(localStorage.getItem(claimHistoryKey(address)) ?? '[]') as ClaimHistoryRecord[]
+  } catch {
+    return []
+  }
+}
+
+function mergeClaimHistory(local: ClaimHistoryRecord[], onChain: ClaimHistoryRecord[]) {
+  const byProof = new Map<string, ClaimHistoryRecord>()
+  for (const record of [...local, ...onChain]) {
+    const key = record.transactionHash ? `tx:${record.transactionHash}` : `balance:${record.balanceId}`
+    const previous = byProof.get(key)
+    byProof.set(key, {
+      ...record,
+      amount: previous?.amount ?? record.amount,
+      asset: previous?.asset ?? record.asset,
+      source: previous?.source === 'local' ? previous.source : record.source,
+    })
+  }
+  return [...byProof.values()].sort((a, b) => new Date(b.claimedAt).getTime() - new Date(a.claimedAt).getTime())
+}
+
+function saveClaimHistory(address: string, claim: ClaimHistoryRecord) {
+  const next = mergeClaimHistory([claim, ...readLocalClaimHistory(address)], [])
+  localStorage.setItem(claimHistoryKey(address), JSON.stringify(next.slice(0, 50)))
 }
 
 function useCountdown(target: Date | null) {
@@ -168,7 +223,7 @@ function Home({ go }: { go: (view: View) => void }) {
           <div className="pay-card">
             <div className="pay-card-top"><span>YOUR PAY</span><span className="secured"><span /> Secured</span></div>
             <div className="pay-total"><small>Total vested</small><strong>2,400.00 <span>{ASSET_LABEL}</span></strong></div>
-            <div className="progress-head"><span>8 of 12 tranches</span><span>66.7%</span></div>
+            <div className="progress-head"><span>8 of 12 payouts (tranches)</span><span>66.7%</span></div>
             <div className="progress"><i /></div>
             <div className="next-pay">
               <div className="calendar-icon"><span>JUL</span><b>15</b></div>
@@ -197,8 +252,8 @@ function Home({ go }: { go: (view: View) => void }) {
         <p className="section-sub">One signature locks every payday. Stellar handles the rest.</p>
         <div className="step-grid">
           <article><span className="step-num">01</span><div className="step-icon violet"><Landmark /></div><h3>Set the schedule</h3><p>Add an employee, choose the amount and cadence. Monthly, weekly, or demo-fast.</p></article>
-          <article><span className="step-num">02</span><div className="step-icon amber"><LockKeyhole /></div><h3>Lock it on-chain</h3><p>Sign once. Every tranche becomes a time-locked claimable balance on Stellar.</p></article>
-          <article><span className="step-num">03</span><div className="step-icon green"><BadgeCheck /></div><h3>Claim on time</h3><p>Employees claim directly to their wallet the second a tranche unlocks.</p></article>
+          <article><span className="step-num">02</span><div className="step-icon amber"><LockKeyhole /></div><h3>Lock it on-chain</h3><p>Sign once. Every payout (tranche) becomes a time-locked claimable balance on Stellar.</p></article>
+          <article><span className="step-num">03</span><div className="step-icon green"><BadgeCheck /></div><h3>Claim on time</h3><p>Employees claim directly to their wallet the second a payout (tranche) unlocks.</p></article>
         </div>
       </section>
     </main>
@@ -210,32 +265,70 @@ function DashboardShell({ title, subtitle, children }: { title: string; subtitle
 }
 
 function Employer({ wallet, connect }: { wallet: WalletState | null; connect: () => void }) {
-  const [name, setName] = useState('')
-  const [employee, setEmployee] = useState('')
-  const [total, setTotal] = useState('1200')
+  const [recipients, setRecipients] = useState<PayrollRecipient[]>(() => [createPayrollRecipient()])
   const [tranches, setTranches] = useState(4)
   const [interval, setInterval] = useState('minute')
   const [firstDelay, setFirstDelay] = useState(1)
   const [busy, setBusy] = useState(false)
   const [notice, setNotice] = useState<{ type: 'success' | 'error'; text: string; hash?: string } | null>(null)
+  const [lastProof, setLastProof] = useState<PayrollProof | null>(null)
   const [schedules, setSchedules] = useState(readSchedules)
-  const amountEach = Number(total) > 0 && tranches > 0 ? (Number(total) / tranches).toFixed(7).replace(/\.?0+$/, '') : '0'
+  const totalLocked = recipients.reduce((sum, recipient) => sum + Number(recipient.total || 0), 0)
+  const balanceCount = recipients.length * tranches
+  const employeeLabel = recipients.length === 1 ? 'employee' : 'employees'
+  const amountEach = (total: string) => Number(total) > 0 && tranches > 0 ? (Number(total) / tranches).toFixed(7).replace(/\.?0+$/, '') : '0'
+
+  function updateRecipient(id: string, patch: Partial<PayrollRecipient>) {
+    setRecipients((current) => current.map((recipient) => recipient.id === id ? { ...recipient, ...patch } : recipient))
+  }
+
+  function removeRecipient(id: string) {
+    setRecipients((current) => current.length === 1 ? current : current.filter((recipient) => recipient.id !== id))
+  }
 
   async function submit(event: React.FormEvent) {
     event.preventDefault()
     if (!wallet) return connect()
     if (wallet.network !== 'TESTNET') return setNotice({ type: 'error', text: 'Switch Freighter to Testnet, then reconnect.' })
-    if (!employee.startsWith('G') || employee.length !== 56) return setNotice({ type: 'error', text: 'Enter a valid 56-character Stellar public key.' })
-    if (!(Number(total) > 0) || tranches < 1 || tranches > 50) return setNotice({ type: 'error', text: 'Use a positive amount and 1–50 tranches.' })
+    const payrollRows = recipients.map((recipient) => ({ ...recipient, employee: recipient.employee.trim(), total: recipient.total.trim() }))
+    if (payrollRows.some((recipient) => !recipient.employee.startsWith('G') || recipient.employee.length !== 56)) return setNotice({ type: 'error', text: 'Every employee needs a valid 56-character Stellar public key.' })
+    if (payrollRows.some((recipient) => !(Number(recipient.total) > 0)) || tranches < 1 || tranches > 50) return setNotice({ type: 'error', text: 'Use positive payroll amounts and 1–50 payouts (tranches).' })
+    if (payrollRows.length * tranches > 100) return setNotice({ type: 'error', text: 'This batch is too large for one Stellar transaction. Keep employees × payouts (tranches) at 100 or less.' })
     const seconds = interval === 'minute' ? 60 : interval === 'day' ? 86400 : interval === 'week' ? 604800 : 2592000
+    const firstUnlock = new Date(Date.now() + firstDelay * seconds * 1000)
     setBusy(true)
     setNotice(null)
     try {
-      const result = await createSchedule({ employer: wallet.address, employee, amountPerTranche: amountEach, tranches, firstUnlock: new Date(Date.now() + firstDelay * seconds * 1000), intervalSeconds: seconds, asset: ASSET })
-      const meta: ScheduleMeta = { id: crypto.randomUUID(), employee, name: name || 'Team member', total, tranches, asset: ASSET_LABEL, createdAt: new Date().toISOString(), hash: result.hash }
-      saveSchedule(meta)
+      const result = await createBatchSchedule({
+        employer: wallet.address,
+        recipients: payrollRows.map((recipient) => ({ employee: recipient.employee, amountPerPayout: amountEach(recipient.total) })),
+        payouts: tranches,
+        firstUnlock,
+        intervalSeconds: seconds,
+        asset: ASSET,
+      })
+      const createdAt = new Date().toISOString()
+      saveSchedules(payrollRows.map((recipient) => ({
+        id: crypto.randomUUID(),
+        employee: recipient.employee,
+        name: recipient.name || 'Team member',
+        total: recipient.total,
+        tranches,
+        asset: ASSET_LABEL,
+        createdAt,
+        hash: result.hash,
+      })))
       setSchedules(readSchedules())
-      setNotice({ type: 'success', text: `${tranches} pay tranches are now locked on Stellar.`, hash: result.hash })
+      setLastProof({
+        hash: result.hash,
+        total: String(payrollRows.reduce((sum, recipient) => sum + Number(recipient.total), 0)),
+        balanceCount: payrollRows.length * tranches,
+        employeeCount: payrollRows.length,
+        payouts: tranches,
+        firstUnlock: firstUnlock.toISOString(),
+        asset: ASSET_LABEL,
+      })
+      setNotice({ type: 'success', text: `Payroll locked for ${payrollRows.length} ${payrollRows.length === 1 ? 'employee' : 'employees'} with ${tranches} payouts each (${tranches} tranches).`, hash: result.hash })
     } catch (error) {
       setNotice({ type: 'error', text: friendlyError(error) })
     } finally {
@@ -247,46 +340,68 @@ function Employer({ wallet, connect }: { wallet: WalletState | null; connect: ()
     <DashboardShell title="Employer workspace" subtitle="Create payroll schedules that settle themselves.">
       <div className="dashboard-grid">
         <form className="panel form-panel" onSubmit={submit}>
-          <div className="panel-title"><div><h2>New payroll schedule</h2><p>One transaction creates every time-locked payment.</p></div><span><Plus size={16} /></span></div>
+          <div className="panel-title"><div><h2>New payroll schedule</h2><p>One transaction creates every time-locked payout (tranche).</p></div><span><Plus size={16} /></span></div>
           {notice && <div className={`notice ${notice.type}`}>{notice.type === 'success' ? <Check size={18} /> : <X size={18} />}<div>{notice.text}{notice.hash && <a href={`https://stellar.expert/explorer/testnet/tx/${notice.hash}`} target="_blank" rel="noreferrer">View transaction <ExternalLink size={13} /></a>}</div></div>}
-          <label>Employee name <span>optional</span><input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Ana Santos" /></label>
-          <label>Employee wallet address<input className="mono" value={employee} onChange={(e) => setEmployee(e.target.value.trim())} placeholder="G..." /></label>
-          <div className="field-row">
-            <label>Total payroll amount<div className="input-suffix"><input inputMode="decimal" value={total} onChange={(e) => setTotal(e.target.value)} /><b>{ASSET_LABEL}</b></div></label>
-            <label>Number of tranches<input type="number" min="1" max="50" value={tranches} onChange={(e) => setTranches(Number(e.target.value))} /></label>
+          {lastProof && <div className="payroll-proof"><div className="proof-title"><ShieldCheck size={18} /><div><strong>Payroll proof</strong><span>{lastProof.payouts} payouts per employee ({lastProof.payouts} tranches) confirmed on Stellar Testnet.</span></div></div><div className="proof-metrics"><div><span>Total locked</span><strong>{formatAmount(lastProof.total)} {lastProof.asset}</strong></div><div><span>Claimable balances</span><strong>{lastProof.balanceCount}</strong></div><div><span>Employees</span><strong>{lastProof.employeeCount}</strong></div><div><span>First payday (First unlock)</span><strong>{new Date(lastProof.firstUnlock).toLocaleString()}</strong></div></div><div className="proof-hash"><span>Transaction hash</span><code>{short(lastProof.hash, 8)}</code></div><a className="proof-link" href={`https://stellar.expert/explorer/testnet/tx/${lastProof.hash}`} target="_blank" rel="noreferrer">Verify on Stellar Expert <ExternalLink size={13} /></a></div>}
+          <div className="batch-head"><div><h3>Employees</h3><p>Add one or more wallets to fund in the same payroll transaction.</p></div><Button type="button" className="button-ghost" onClick={() => setRecipients((current) => [...current, createPayrollRecipient('')])}><Plus size={15} /> Add employee</Button></div>
+          <div className="employee-list">
+            {recipients.map((recipient, index) => <div className="employee-row" key={recipient.id}>
+              <div className="row-number">{String(index + 1).padStart(2, '0')}</div>
+              <label>Employee name <span>optional</span><input value={recipient.name} onChange={(event) => updateRecipient(recipient.id, { name: event.target.value })} placeholder="e.g. Ana Santos" /></label>
+              <label>Wallet address<input className="mono" value={recipient.employee} onChange={(event) => updateRecipient(recipient.id, { employee: event.target.value.trim() })} placeholder="G..." /></label>
+              <label>Total payroll amount<div className="input-suffix"><input inputMode="decimal" value={recipient.total} onChange={(event) => updateRecipient(recipient.id, { total: event.target.value })} /><b>{ASSET_LABEL}</b></div></label>
+              <button className="row-remove" type="button" disabled={recipients.length === 1} onClick={() => removeRecipient(recipient.id)} aria-label="Remove employee"><X size={15} /></button>
+            </div>)}
           </div>
           <div className="field-row">
-            <label>Pay cadence<select value={interval} onChange={(e) => setInterval(e.target.value)}><option value="minute">Every minute (demo)</option><option value="day">Daily</option><option value="week">Weekly</option><option value="month">Monthly</option></select></label>
-            <label>First unlock <span>intervals from now</span><input type="number" min="0" value={firstDelay} onChange={(e) => setFirstDelay(Number(e.target.value))} /></label>
+            <label>Number of payouts <span>(tranches)</span><input type="number" min="1" max="50" value={tranches} onChange={(e) => setTranches(Number(e.target.value))} /></label>
+            <label>Pay frequency <span>(Pay cadence)</span><select value={interval} onChange={(e) => setInterval(e.target.value)}><option value="minute">Every minute (demo)</option><option value="day">Daily</option><option value="week">Weekly</option><option value="month">Monthly</option></select></label>
           </div>
-          <div className="schedule-summary"><span><Clock3 size={17} /> {tranches} payments of <strong>{amountEach} {ASSET_LABEL}</strong></span><span>Total locked <strong>{formatAmount(total)} {ASSET_LABEL}</strong></span></div>
+          <div className="field-row">
+            <label>First payday <span>(First unlock, intervals from now)</span><input type="number" min="0" value={firstDelay} onChange={(e) => setFirstDelay(Number(e.target.value))} /></label>
+            <div className="limit-note"><Clock3 size={16} /><span>{balanceCount}/100 claimable balances in this transaction</span></div>
+          </div>
+          <div className="schedule-summary"><span><Users size={17} /> {recipients.length} {employeeLabel} × <strong>{tranches} payouts (tranches)</strong></span><span>Total locked <strong>{formatAmount(totalLocked)} {ASSET_LABEL}</strong></span></div>
           <Button className="button-primary full" type="submit" loading={busy}><LockKeyhole size={17} /> {wallet ? 'Lock payroll on Stellar' : 'Connect wallet to continue'}</Button>
           <p className="fine-print"><ShieldCheck size={14} /> Funds go straight from your wallet into protocol-level claimable balances.</p>
         </form>
         <aside className="panel side-panel">
           <div className="panel-title"><div><h2>Recent schedules</h2><p>Saved locally on this device.</p></div></div>
-          {schedules.length === 0 ? <div className="empty"><div><Banknote /></div><h3>No schedules yet</h3><p>Your funded payrolls will appear here.</p></div> : <div className="schedule-list">{schedules.map((schedule) => <article key={schedule.id}><div className="avatar">{schedule.name.slice(0, 1).toUpperCase()}</div><div><strong>{schedule.name}</strong><span>{short(schedule.employee)}</span><small>{schedule.tranches} × {formatAmount(Number(schedule.total) / schedule.tranches)} {schedule.asset}</small></div><a href={`https://stellar.expert/explorer/testnet/tx/${schedule.hash}`} target="_blank" rel="noreferrer"><ExternalLink size={16} /></a></article>)}</div>}
-          <div className="info-card"><Sparkles size={18} /><div><strong>Demo tip</strong><p>Choose “every minute” so judges can watch a tranche unlock live.</p></div></div>
+          {schedules.length === 0 ? <div className="empty"><div><Banknote /></div><h3>No schedules yet</h3><p>Your funded payrolls will appear here.</p></div> : <div className="schedule-list">{schedules.map((schedule) => <article key={schedule.id}><div className="avatar">{schedule.name.slice(0, 1).toUpperCase()}</div><div><strong>{schedule.name}</strong><span>{short(schedule.employee)}</span><small>{schedule.tranches} payouts (tranches) × {formatAmount(Number(schedule.total) / schedule.tranches)} {schedule.asset}</small></div><a href={`https://stellar.expert/explorer/testnet/tx/${schedule.hash}`} target="_blank" rel="noreferrer"><ExternalLink size={16} /></a></article>)}</div>}
+          <div className="info-card"><Sparkles size={18} /><div><strong>Demo tip</strong><p>Choose “every minute” so judges can watch a payout (tranche) unlock live.</p></div></div>
         </aside>
       </div>
     </DashboardShell>
   )
 }
 
-function BalanceCard({ record, onClaim, claiming }: { record: BalanceRecord; onClaim: (id: string) => void; claiming: boolean }) {
+function BalanceCard({ record, onClaim, claiming }: { record: BalanceRecord; onClaim: (record: BalanceRecord) => void; claiming: boolean }) {
   const unlockAt = parseUnlockTime(record.claimants[0]?.predicate ?? {})
   const countdown = useCountdown(unlockAt)
   return (
     <article className={`balance-card ${countdown.unlocked ? 'unlocked' : ''}`}>
       <div className="status-icon">{countdown.unlocked ? <BadgeCheck /> : <LockKeyhole />}</div>
       <div className="balance-main"><span className="status-label">{countdown.unlocked ? 'READY TO CLAIM' : 'LOCKED'}</span><strong>{formatAmount(record.amount)} <small>{record.asset === 'native' ? 'XLM' : record.asset.split(':')[0]}</small></strong><span className="unlock-date">{unlockAt ? (countdown.unlocked ? `Unlocked ${unlockAt.toLocaleString()}` : `Unlocks ${unlockAt.toLocaleString()}`) : 'Available unconditionally'}</span></div>
-      <div className="balance-action">{countdown.unlocked ? <Button className="button-primary" onClick={() => onClaim(record.balance_id)} loading={claiming}>Claim now <ArrowRight size={16} /></Button> : <div className="countdown"><Clock3 size={15} /><span>{countdown.label}</span></div>}<a href={`https://stellar.expert/explorer/testnet/claimable-balance/${record.balance_id}`} target="_blank" rel="noreferrer">View on-chain <ExternalLink size={12} /></a></div>
+      <div className="balance-action">{countdown.unlocked ? <Button className="button-primary" onClick={() => onClaim(record)} loading={claiming}>Claim now <ArrowRight size={16} /></Button> : <div className="countdown"><Clock3 size={15} /><span>{countdown.label}</span></div>}<a href={`https://stellar.expert/explorer/testnet/claimable-balance/${record.balance_id}`} target="_blank" rel="noreferrer">View on-chain <ExternalLink size={12} /></a></div>
     </article>
+  )
+}
+
+function ClaimHistory({ history }: { history: ClaimHistoryRecord[] }) {
+  return (
+    <section className="history-panel panel">
+      <div className="timeline-head">
+        <div><h2>Claim history</h2><p>Completed payroll claims for this wallet.</p></div>
+        <span>{history.length} claimed</span>
+      </div>
+      {history.length === 0 ? <div className="empty history-empty"><div><BadgeCheck /></div><h3>No claims yet</h3><p>Claimed salary payouts (tranches) will appear here with their transaction proof.</p></div> : <div className="history-list">{history.map((record) => <article key={record.transactionHash ?? record.id}><div className="history-check"><Check size={17} /></div><div><strong>{record.amount ? `${formatAmount(record.amount)} ${record.asset ?? ASSET_LABEL}` : 'Claimed payroll payout (tranche)'}</strong><span>{new Date(record.claimedAt).toLocaleString()}</span><small>{record.balanceId ? short(record.balanceId, 8) : 'Claim operation'}</small></div>{record.transactionHash && <a href={`https://stellar.expert/explorer/testnet/tx/${record.transactionHash}`} target="_blank" rel="noreferrer">View tx <ExternalLink size={12} /></a>}</article>)}</div>}
+    </section>
   )
 }
 
 function Employee({ wallet, connect }: { wallet: WalletState | null; connect: () => void }) {
   const [records, setRecords] = useState<BalanceRecord[]>([])
+  const [history, setHistory] = useState<ClaimHistoryRecord[]>([])
   const [busy, setBusy] = useState(false)
   const [claiming, setClaiming] = useState('')
   const [notice, setNotice] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
@@ -295,7 +410,12 @@ function Employee({ wallet, connect }: { wallet: WalletState | null; connect: ()
     if (!wallet) return
     setBusy(true)
     try {
-      setRecords(await getClaimableBalances(wallet.address))
+      const [claimable, onChainHistory] = await Promise.all([
+        getClaimableBalances(wallet.address),
+        getClaimHistory(wallet.address),
+      ])
+      setRecords(claimable)
+      setHistory(mergeClaimHistory(readLocalClaimHistory(wallet.address), onChainHistory))
       setNotice(null)
     } catch (error) {
       setNotice({ type: 'error', text: friendlyError(error) })
@@ -307,11 +427,20 @@ function Employee({ wallet, connect }: { wallet: WalletState | null; connect: ()
   useEffect(() => { void refresh() }, [refresh])
   const totals = useMemo(() => records.reduce((sum, record) => sum + Number(record.amount), 0), [records])
 
-  async function claim(id: string) {
+  async function claim(record: BalanceRecord) {
     if (!wallet) return connect()
-    setClaiming(id)
+    setClaiming(record.balance_id)
     try {
-      await claimBalance(wallet.address, id)
+      const result = await claimBalance(wallet.address, record.balance_id)
+      saveClaimHistory(wallet.address, {
+        id: record.balance_id,
+        balanceId: record.balance_id,
+        transactionHash: result.hash,
+        claimedAt: new Date().toISOString(),
+        amount: record.amount,
+        asset: record.asset === 'native' ? 'XLM' : record.asset.split(':')[0],
+        source: 'local',
+      })
       setNotice({ type: 'success', text: 'Pay claimed successfully. It is now in your wallet.' })
       await refresh()
     } catch (error) {
@@ -337,11 +466,12 @@ function Employee({ wallet, connect }: { wallet: WalletState | null; connect: ()
   return (
     <DashboardShell title="My pay" subtitle="Your on-chain salary, unlocked on schedule.">
       {!wallet ? <div className="connect-state panel"><div className="wallet-orbit"><Wallet /></div><h2>Connect to see your pay</h2><p>Use the Freighter wallet that your employer added to the payroll schedule.</p><Button className="button-primary button-large" onClick={connect}><Wallet size={18} /> Connect Freighter</Button></div> : <>
-        <div className="wallet-overview panel"><div><span>CONNECTED WALLET</span><strong>{short(wallet.address, 8)}</strong><button onClick={() => navigator.clipboard.writeText(wallet.address)}><Copy size={14} /> Copy</button></div><div className="overview-stat"><span>LOCKED & CLAIMABLE</span><strong>{formatAmount(totals)} <small>{records[0]?.asset === 'native' || !records[0] ? ASSET_LABEL : records[0].asset.split(':')[0]}</small></strong></div><div className="overview-stat"><span>ACTIVE TRANCHES</span><strong>{records.length}</strong></div><Button className="refresh-button" onClick={refresh} loading={busy}><RefreshCw size={17} /></Button></div>
+        <div className="wallet-overview panel"><div><span>CONNECTED WALLET</span><strong>{short(wallet.address, 8)}</strong><button onClick={() => navigator.clipboard.writeText(wallet.address)}><Copy size={14} /> Copy</button></div><div className="overview-stat"><span>LOCKED & CLAIMABLE</span><strong>{formatAmount(totals)} <small>{records[0]?.asset === 'native' || !records[0] ? ASSET_LABEL : records[0].asset.split(':')[0]}</small></strong></div><div className="overview-stat"><span>ACTIVE PAYOUTS (TRANCHES)</span><strong>{records.length}</strong></div><Button className="refresh-button" onClick={refresh} loading={busy}><RefreshCw size={17} /></Button></div>
         {notice && <div className={`notice wide ${notice.type}`}>{notice.type === 'success' ? <Check size={18} /> : <X size={18} />} {notice.text}</div>}
         {!ASSET.isNative() && <div className="trustline-card"><div><CircleDollarSign /><span><strong>New to {ASSET_LABEL}?</strong><small>Add a trustline before claiming this issued asset.</small></span></div><Button className="button-ghost" onClick={trust} loading={busy}>Enable {ASSET_LABEL}</Button></div>}
         <div className="timeline-head"><div><h2>Vesting timeline</h2><p>Claimable balances addressed to your wallet.</p></div><span>{records.length} active</span></div>
         {busy && records.length === 0 ? <div className="loading-state"><LoaderCircle className="spin" /><span>Reading Stellar ledger…</span></div> : records.length === 0 ? <div className="empty large panel"><div><Clock3 /></div><h3>No active pay found</h3><p>Ask your employer to create a schedule for <span className="mono">{short(wallet.address, 8)}</span>, then refresh.</p><Button className="button-ghost" onClick={refresh}><RefreshCw size={16} /> Refresh ledger</Button></div> : <div className="balance-list">{records.map((record) => <BalanceCard key={record.balance_id} record={record} onClaim={claim} claiming={claiming === record.balance_id} />)}</div>}
+        <ClaimHistory history={history} />
       </>}
     </DashboardShell>
   )
