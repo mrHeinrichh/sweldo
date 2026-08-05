@@ -1,17 +1,23 @@
 import {
+  Address as StellarAddress,
   Asset,
   Claimant,
+  Contract,
   Horizon,
   Networks,
+  nativeToScVal,
   Operation,
+  rpc,
   TransactionBuilder,
   xdr,
 } from '@stellar/stellar-sdk'
 import { getNetwork, isConnected, requestAccess, signTransaction } from '@stellar/freighter-api'
 
 export const HORIZON_URL = 'https://horizon-testnet.stellar.org'
+export const SOROBAN_RPC_URL = 'https://soroban-testnet.stellar.org'
 export const NETWORK_PASSPHRASE = Networks.TESTNET
 export const server = new Horizon.Server(HORIZON_URL)
+export const rpcServer = new rpc.Server(SOROBAN_RPC_URL)
 
 export type WalletState = {
   address: string
@@ -104,6 +110,107 @@ async function signAndSubmit(transaction: ReturnType<TransactionBuilder['build']
     'Freighter could not sign the transaction',
   )
   return server.submitTransaction(TransactionBuilder.fromXDR(signed.signedTxXdr, NETWORK_PASSPHRASE))
+}
+
+function wait(milliseconds: number) {
+  return new Promise((resolve) => window.setTimeout(resolve, milliseconds))
+}
+
+function hexToBytes(hex: string) {
+  const clean = hex.trim().replace(/^0x/, '')
+  if (!/^[0-9a-fA-F]+$/.test(clean) || clean.length % 2 !== 0) {
+    throw new Error('Expected a hex string.')
+  }
+  const bytes = new Uint8Array(clean.length / 2)
+  for (let index = 0; index < clean.length; index += 2) {
+    bytes[index / 2] = Number.parseInt(clean.slice(index, index + 2), 16)
+  }
+  return bytes
+}
+
+function bytesToHex(bytes: Uint8Array) {
+  return [...bytes].map((byte) => byte.toString(16).padStart(2, '0')).join('')
+}
+
+function amountToScaledInteger(value: string) {
+  const [whole = '0', fraction = ''] = value.trim().split('.')
+  const normalizedWhole = whole.replace(/[^\d]/g, '') || '0'
+  const normalizedFraction = fraction.replace(/[^\d]/g, '').padEnd(7, '0').slice(0, 7)
+  return BigInt(normalizedWhole) * 10_000_000n + BigInt(normalizedFraction || '0')
+}
+
+export function registryContractId() {
+  return import.meta.env.VITE_PAYROLL_REGISTRY_CONTRACT_ID?.trim() ?? ''
+}
+
+export async function recordScheduleProof(input: {
+  employer: string
+  employee: string
+  total: string
+  asset: string
+  cadenceSeconds: number
+  claimableBalanceId: string
+  payoutTxHash: string
+}) {
+  const contractId = registryContractId()
+  if (!contractId) return null
+
+  const account = await loadAccount(input.employer)
+  const scheduleId = new Uint8Array(32)
+  window.crypto.getRandomValues(scheduleId)
+  const contract = new Contract(contractId)
+  const transaction = new TransactionBuilder(account, {
+    fee: '1000000',
+    networkPassphrase: NETWORK_PASSPHRASE,
+  })
+    .addOperation(contract.call(
+      'record_schedule',
+      nativeToScVal(scheduleId, { type: 'bytes' }),
+      StellarAddress.fromString(input.employer).toScVal(),
+      StellarAddress.fromString(input.employee).toScVal(),
+      nativeToScVal(amountToScaledInteger(input.total), { type: 'i128' }),
+      nativeToScVal(input.asset, { type: 'string' }),
+      nativeToScVal(BigInt(input.cadenceSeconds), { type: 'u64' }),
+      nativeToScVal(input.claimableBalanceId, { type: 'string' }),
+      nativeToScVal(hexToBytes(input.payoutTxHash), { type: 'bytes' }),
+    ))
+    .setTimeout(180)
+    .build()
+
+  const prepared = await rpcServer.prepareTransaction(transaction)
+  const signed = unwrap(
+    await signTransaction(prepared.toXDR(), {
+      address: input.employer,
+      networkPassphrase: NETWORK_PASSPHRASE,
+    }),
+    'Freighter could not sign the Soroban registry proof',
+  )
+  const signedTransaction = TransactionBuilder.fromXDR(signed.signedTxXdr, NETWORK_PASSPHRASE)
+  const response = await rpcServer.sendTransaction(signedTransaction)
+  if (response.status === 'ERROR') {
+    throw new Error(`Soroban registry proof failed: ${JSON.stringify(response.errorResult)}`)
+  }
+
+  for (let attempt = 0; attempt < 20; attempt += 1) {
+    const result = await rpcServer.getTransaction(response.hash)
+    if (result.status === 'SUCCESS') {
+      return {
+        hash: response.hash,
+        contractId,
+        scheduleId: bytesToHex(scheduleId),
+      }
+    }
+    if (result.status === 'FAILED') {
+      throw new Error('Soroban registry proof failed on-chain.')
+    }
+    await wait(1000)
+  }
+
+  return {
+    hash: response.hash,
+    contractId,
+    scheduleId: bytesToHex(scheduleId),
+  }
 }
 
 function createdBalanceIds(resultXdr?: string) {

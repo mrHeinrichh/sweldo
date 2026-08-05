@@ -7,7 +7,9 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "contract:build": "PATH=/opt/homebrew/opt/rustup/bin:$PATH stellar contract build",
+    "contract:test": "PATH=/opt/homebrew/opt/rustup/bin:$PATH cargo test -p sweldo_payroll_registry"
   },
   "dependencies": {
     "@stellar/freighter-api": "^6.0.1",

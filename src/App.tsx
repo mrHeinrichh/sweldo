@@ -36,6 +36,8 @@ import {
   getClaimableBalances,
   getXlmBalance,
   parseUnlockTime,
+  recordScheduleProof,
+  registryContractId,
   type BalanceRecord,
   type ClaimHistoryRecord,
   type WalletState,
@@ -60,6 +62,8 @@ type ScheduleMeta = {
   cancelledAt?: string
   cancelHash?: string
   cancelledPayouts?: number
+  registryHash?: string
+  registryContractId?: string
 }
 type PayrollRecipient = {
   id: string
@@ -75,6 +79,8 @@ type PayrollProof = {
   payouts: number
   firstUnlock: string
   asset: string
+  registryHash?: string
+  registryContractId?: string
 }
 
 const ASSET = configuredAsset()
@@ -362,7 +368,7 @@ function Employer({ wallet, connect }: { wallet: WalletState | null; connect: ()
         asset: ASSET,
       })
       const createdAt = new Date().toISOString()
-      const createdSchedules = payrollRows.map((recipient, index) => ({
+      const createdSchedules: ScheduleMeta[] = payrollRows.map((recipient, index) => ({
         id: crypto.randomUUID(),
         employee: recipient.employee,
         name: recipient.name || 'Team member',
@@ -377,6 +383,28 @@ function Employer({ wallet, connect }: { wallet: WalletState | null; connect: ()
         intervalSeconds: seconds,
         revocable: true,
       }))
+      const firstSchedule = createdSchedules[0]
+      let registryProof: Awaited<ReturnType<typeof recordScheduleProof>> = null
+      let registryWarning = ''
+      if (firstSchedule?.balanceIds?.[0]) {
+        try {
+          registryProof = await recordScheduleProof({
+            employer: wallet.address,
+            employee: firstSchedule.employee,
+            total: firstSchedule.total,
+            asset: ASSET_LABEL,
+            cadenceSeconds: seconds,
+            claimableBalanceId: firstSchedule.balanceIds[0],
+            payoutTxHash: result.hash,
+          })
+          if (registryProof) {
+            firstSchedule.registryHash = registryProof.hash
+            firstSchedule.registryContractId = registryProof.contractId
+          }
+        } catch (registryError) {
+          registryWarning = ` Soroban registry proof was not recorded: ${friendlyError(registryError)}`
+        }
+      }
       saveSchedules(createdSchedules)
       setSchedules(readSchedules())
       setActiveBalanceIds((current) => [...new Set([...current, ...result.balanceIds])])
@@ -389,8 +417,10 @@ function Employer({ wallet, connect }: { wallet: WalletState | null; connect: ()
         payouts: tranches,
         firstUnlock: firstUnlock.toISOString(),
         asset: ASSET_LABEL,
+        registryHash: registryProof?.hash,
+        registryContractId: registryProof?.contractId,
       })
-      setNotice({ type: 'success', text: `Payroll locked for ${payrollRows.length} ${payrollRows.length === 1 ? 'employee' : 'employees'}. Future payouts can be cancelled before payday.`, hash: result.hash })
+      setNotice({ type: 'success', text: `Payroll locked for ${payrollRows.length} ${payrollRows.length === 1 ? 'employee' : 'employees'}${registryProof ? ' and recorded in the Soroban registry' : ''}. Future payouts can be cancelled before payday.${registryWarning}`, hash: result.hash })
     } catch (error) {
       setNotice({ type: 'error', text: friendlyError(error) })
     } finally {
@@ -440,7 +470,16 @@ function Employer({ wallet, connect }: { wallet: WalletState | null; connect: ()
         <form className="panel form-panel" onSubmit={submit}>
           <div className="panel-title"><div><h2>New payroll schedule</h2><p>One transaction creates every time-locked payout (tranche).</p></div><span><Plus size={16} /></span></div>
           {notice && <div className={`notice ${notice.type}`}>{notice.type === 'success' ? <Check size={18} /> : <X size={18} />}<div>{notice.text}{notice.hash && <a href={`https://stellar.expert/explorer/testnet/tx/${notice.hash}`} target="_blank" rel="noreferrer">View transaction <ExternalLink size={13} /></a>}</div></div>}
-          {lastProof && <div className="payroll-proof"><div className="proof-title"><ShieldCheck size={18} /><div><strong>Payroll proof</strong><span>{lastProof.payouts} payouts per employee ({lastProof.payouts} tranches) confirmed on Stellar Testnet.</span></div></div><div className="proof-metrics"><div><span>Total locked</span><strong>{formatAmount(lastProof.total)} {lastProof.asset}</strong></div><div><span>Claimable balances</span><strong>{lastProof.balanceCount}</strong></div><div><span>Employees</span><strong>{lastProof.employeeCount}</strong></div><div><span>First payday (First unlock)</span><strong>{new Date(lastProof.firstUnlock).toLocaleString()}</strong></div></div><div className="proof-hash"><span>Transaction hash</span><code>{short(lastProof.hash, 8)}</code></div><a className="proof-link" href={`https://stellar.expert/explorer/testnet/tx/${lastProof.hash}`} target="_blank" rel="noreferrer">Verify on Stellar Expert <ExternalLink size={13} /></a></div>}
+          {lastProof && <div className="payroll-proof">
+            <div className="proof-title"><ShieldCheck size={18} /><div><strong>Payroll proof</strong><span>{lastProof.payouts} payouts per employee ({lastProof.payouts} tranches) confirmed on Stellar Testnet.</span></div></div>
+            <div className="proof-metrics"><div><span>Total locked</span><strong>{formatAmount(lastProof.total)} {lastProof.asset}</strong></div><div><span>Claimable balances</span><strong>{lastProof.balanceCount}</strong></div><div><span>Employees</span><strong>{lastProof.employeeCount}</strong></div><div><span>First payday (First unlock)</span><strong>{new Date(lastProof.firstUnlock).toLocaleString()}</strong></div></div>
+            <div className="proof-hash"><span>Payout transaction hash</span><code>{short(lastProof.hash, 8)}</code></div>
+            <a className="proof-link" href={`https://stellar.expert/explorer/testnet/tx/${lastProof.hash}`} target="_blank" rel="noreferrer">Verify payout on Stellar Expert <ExternalLink size={13} /></a>
+            {lastProof.registryContractId && <>
+              <div className="proof-hash"><span>Soroban registry contract</span><code>{short(lastProof.registryContractId, 8)}</code></div>
+              {lastProof.registryHash && <a className="proof-link" href={`https://stellar.expert/explorer/testnet/tx/${lastProof.registryHash}`} target="_blank" rel="noreferrer">Verify registry proof <ExternalLink size={13} /></a>}
+            </>}
+          </div>}
           <div className="batch-head"><div><h3>Employees</h3><p>Add one or more wallets to fund in the same payroll transaction.</p></div><Button type="button" className="button-ghost" onClick={() => setRecipients((current) => [...current, createPayrollRecipient('')])}><Plus size={15} /> Add employee</Button></div>
           <div className="employee-list">
             {recipients.map((recipient, index) => <div className="employee-row" key={recipient.id}>
@@ -481,6 +520,7 @@ function Employer({ wallet, connect }: { wallet: WalletState | null; connect: ()
                         : !balancesLoaded ? <span><LoaderCircle size={12} className="spin" /> Checking future payouts…</span>
                           : remaining.length > 0 ? <><span>{remaining.length} future {remaining.length === 1 ? 'payout' : 'payouts'} cancellable before payday</span><Button type="button" className="button-cancel" loading={cancelling === schedule.id} onClick={() => cancelSchedule(schedule)}><RotateCcw size={13} /> Cancel remaining payroll</Button></>
                             : <span>No cancellable future payouts remain</span>}
+                {schedule.registryContractId && <a href={`https://stellar.expert/explorer/testnet/contract/${schedule.registryContractId}`} target="_blank" rel="noreferrer">Soroban registry <ExternalLink size={11} /></a>}
               </div>
             </article>
           })}</div>}
@@ -628,6 +668,7 @@ function App() {
       {view === 'employer' && <Employer wallet={wallet} connect={connect} />}
       {view === 'employee' && <Employee wallet={wallet} connect={connect} />}
       <footer><Logo onClick={() => go('home')} /><p>Payroll that keeps its promise. Built on Stellar Testnet.</p><a href="https://stellar.org" target="_blank" rel="noreferrer">Built on Stellar <ExternalLink size={13} /></a></footer>
+      {registryContractId() && <div className="contract-ribbon">Soroban Payroll Registry: <a href={`https://stellar.expert/explorer/testnet/contract/${registryContractId()}`} target="_blank" rel="noreferrer">{short(registryContractId(), 8)}</a></div>}
     </div>
   )
 }
