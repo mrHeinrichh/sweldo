@@ -1,0 +1,9 @@
+target
+outputs
+node_modules
+.git
+.DS_Store
+*.pptx
+*.pdf
+*.inspect.ndjson
+sweldo-working.pptx
