@@ -8,6 +8,10 @@
     "build": "tsc -b && vite build",
     "lint": "oxlint",
     "preview": "vite preview",
+    "week1:setup": "node scripts/week1-testnet.mjs setup",
+    "week1:demo": "node scripts/week1-testnet.mjs demo",
+    "week1:verify": "node scripts/week1-testnet.mjs verify",
+    "week1:all": "node scripts/week1-testnet.mjs all",
     "contract:build": "PATH=/opt/homebrew/opt/rustup/bin:$PATH stellar contract build",
     "contract:test": "PATH=/opt/homebrew/opt/rustup/bin:$PATH cargo test -p sweldo_payroll_registry"
   },

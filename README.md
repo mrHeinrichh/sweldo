@@ -69,6 +69,16 @@ Current Testnet deployment:
 
 To demonstrate offboarding, create a schedule with multiple future payouts, stay connected as the employer, and select **Cancel remaining payroll** in Recent schedules. The app excludes payouts whose payday has already arrived.
 
+## Instaward Week 1: PHPT path-payment validation
+
+Week 1 is implemented as a local Testnet harness. It creates controlled PHPT and test-USDC assets, seeds a direct Stellar DEX offer, executes a USDC-to-PHPT strict-send path payment, and stores the transaction evidence in the ignored `.sweldo-local` directory.
+
+```bash
+npm run week1:all
+```
+
+See [`docs/week-1-testnet-demo.md`](docs/week-1-testnet-demo.md) for the flow chart, individual commands, expected balances, and verification steps. The test-USDC asset has no real value and is not Circle-issued USDC.
+
 ## Configuration
 
 | Variable | Purpose |
