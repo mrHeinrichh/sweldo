@@ -24,3 +24,19 @@ target
 *.sln
 *.sw?
 .vercel
+
+# Generated documents, media, and temporary render files.
+output/
+outputs/
+tmp/
+*.pptx
+*.inspect.ndjson
+
+# One-off document and presentation generation helpers.
+scripts/*.py
+
+# Local codebase-analysis artifacts.
+graphify-out/
+
+# Local-only Week 1 Testnet accounts, secret keys, and transaction evidence.
+.sweldo-local/
