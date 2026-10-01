@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="870" viewBox="0 0 1000 870" role="img" aria-labelledby="title description">
+  <title id="title">Sweldo Week 2: Worker Claim and Convert</title>
+  <desc id="description">A worker checks a scheduled payout, reviews the PHPT quote and missing trustlines, signs one atomic transaction, and receives a transaction receipt. Locked payouts wait. Missing liquidity prevents signing. Failed conversions roll back.</desc>
+  <defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M0 0 L10 5 L0 10" fill="none" stroke="#333" stroke-width="1.4"/></marker></defs>
+  <style>
+    text { font-family:Arial,sans-serif; fill:#171717; text-anchor:middle; font-size:17px }
+    .heading { font-size:28px; font-weight:700 }
+    .small { font-size:14px; fill:#555 }
+    .strong { font-weight:700 }
+    .box { fill:white; stroke:#333; stroke-width:1.5 }
+    .arrow { fill:none; stroke:#333; stroke-width:1.5; marker-end:url(#arrow) }
+  </style>
+  <rect width="1000" height="870" fill="white"/>
+  <text x="500" y="42" class="heading">Sweldo Week 2: Worker Claim and Convert</text>
+  <text x="500" y="70" class="small">Local application / Stellar Testnet / controlled test assets only</text>
+  <rect x="70" y="105" width="470" height="75" class="box"/>
+  <text x="305" y="134" class="strong">Connect worker wallet on Testnet</text>
+  <text x="305" y="159">Read scheduled payout from Horizon</text>
+  <path d="M305 180 V215" class="arrow"/>
+  <path d="M305 215 L490 263 L305 311 L120 263 Z" class="box"/>
+  <text x="305" y="268" class="strong">Payout unlocked?</text>
+  <path d="M490 263 H630" class="arrow"/>
+  <text x="563" y="249" class="small">No</text>
+  <rect x="645" y="230" width="285" height="65" class="box"/>
+  <text x="787" y="257">Show countdown</text><text x="787" y="281" class="small">Wait for payday, then refresh</text>
+  <path d="M305 311 V352" class="arrow"/><text x="330" y="339" class="small">Yes</text>
+  <rect x="70" y="365" width="470" height="80" class="box"/>
+  <text x="305" y="393" class="strong">Choose Claim as PHPT</text>
+  <text x="305" y="421">Check issuers, trustlines, and liquidity</text>
+  <path d="M540 405 H630" class="arrow"/>
+  <rect x="645" y="367" width="285" height="76" class="box"/>
+  <text x="787" y="393">No valid route or trustline</text><text x="787" y="419" class="small">Show error; nothing is claimed</text>
+  <path d="M305 445 V480" class="arrow"/>
+  <rect x="70" y="493" width="470" height="80" class="box"/>
+  <text x="305" y="521" class="strong">Review quote and approve in Freighter</text>
+  <text x="305" y="548">Expected PHPT / 1% limit / 60-second quote</text>
+  <path d="M305 573 V608" class="arrow"/>
+  <rect x="70" y="620" width="470" height="83" class="box"/>
+  <text x="305" y="648" class="strong">One atomic transaction</text>
+  <text x="305" y="676">Missing trustlines + claim + path payment</text>
+  <path d="M540 661 H630" class="arrow"/>
+  <rect x="645" y="613" width="285" height="98" class="box"/>
+  <text x="787" y="642">Slippage or liquidity failure</text>
+  <text x="787" y="668" class="small">All payout operations roll back</text>
+  <text x="787" y="691" class="small">Refresh quote and retry</text>
+  <path d="M305 703 V738" class="arrow"/>
+  <rect x="70" y="751" width="470" height="75" class="box"/>
+  <text x="305" y="781" class="strong">Worker receives PHPT</text>
+  <text x="305" y="807">Show transaction hash and Stellar Expert link</text>
+  <text x="787" y="772" class="small">If confirmation is unavailable:</text>
+  <text x="787" y="796" class="small">check the submitted hash first.</text>
+  <text x="500" y="852" class="small">A submitted transaction may charge a network fee even when payout operations fail.</text>
+</svg>
