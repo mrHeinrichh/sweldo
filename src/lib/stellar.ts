@@ -361,6 +361,26 @@ export async function addTrustline(address: string, asset: Asset) {
   return signAndSubmit(transaction, address)
 }
 
+export async function isAccountFunded(address: string) {
+  try {
+    await loadAccount(address)
+    return true
+  } catch (error) {
+    if (isNotFound(error)) return false
+    throw error
+  }
+}
+
+// Friendbot is Stellar's public Testnet faucet; it only works on Testnet and sends valueless test XLM.
+export async function fundWithFriendbot(address: string) {
+  const response = await fetch(`https://friendbot.stellar.org/?addr=${encodeURIComponent(address)}`)
+  if (!response.ok) {
+    const detail = await response.text().catch(() => '')
+    if (detail.includes('op_already_exists') || detail.includes('already funded')) return
+    throw new Error('The free practice money service is busy. Wait a moment and try again.')
+  }
+}
+
 export async function hasTrustline(address: string, asset: Asset) {
   if (asset.isNative()) return true
   try {

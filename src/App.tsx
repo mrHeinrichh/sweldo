@@ -35,7 +35,9 @@ import {
   getClaimHistory,
   getClaimableBalances,
   getXlmBalance,
+  fundWithFriendbot,
   hasTrustline,
+  isAccountFunded,
   parseUnlockTime,
   recordScheduleProof,
   registryContractId,
@@ -288,6 +290,39 @@ function DashboardShell({ title, subtitle, children }: { title: string; subtitle
   return <main className="dashboard"><div className="dash-head"><div><h1>{title}</h1><p>{subtitle}</p></div><span className="network-banner"><span /> Stellar Testnet</span></div>{children}</main>
 }
 
+function FundCard({ wallet }: { wallet: WalletState | null }) {
+  const [empty, setEmpty] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    let cancelled = false
+    setEmpty(false)
+    if (!wallet || wallet.network !== 'TESTNET') return
+    isAccountFunded(wallet.address)
+      .then((funded) => { if (!cancelled) setEmpty(!funded) })
+      .catch(() => { /* a failed lookup must not block the page */ })
+    return () => { cancelled = true }
+  }, [wallet])
+
+  async function fund() {
+    if (!wallet) return
+    setBusy(true)
+    setError('')
+    try {
+      await fundWithFriendbot(wallet.address)
+      setEmpty(!(await isAccountFunded(wallet.address)))
+    } catch (err) {
+      setError(friendlyError(err))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  if (!empty) return null
+  return <div className="trustline-card"><div><Wallet /><span><strong>Your practice wallet is empty</strong><small>Get free Testnet money to try Sweldo. It has no real value.</small>{error && <small className="error-text">{error}</small>}</span></div><Button type="button" className="button-primary" onClick={fund} loading={busy}>Get free practice money</Button></div>
+}
+
 function TrustlineCard({ wallet, connect, message }: { wallet: WalletState | null; connect: () => void; message: string }) {
   const [needed, setNeeded] = useState(false)
   const [busy, setBusy] = useState(false)
@@ -506,6 +541,7 @@ function Employer({ wallet, connect }: { wallet: WalletState | null; connect: ()
       <div className="dashboard-grid">
         <form className="panel form-panel" onSubmit={submit}>
           <div className="panel-title"><div><h2>New payroll schedule</h2><p>One transaction creates every time-locked payout (tranche).</p></div><span><Plus size={16} /></span></div>
+          <FundCard wallet={wallet} />
           <TrustlineCard wallet={wallet} connect={connect} message={`Add a ${ASSET_LABEL} trustline so this wallet can hold and lock ${ASSET_LABEL} for payroll.`} />
           {notice && <div className={`notice ${notice.type}`}>{notice.type === 'success' ? <Check size={18} /> : <X size={18} />}<div>{notice.text}{notice.hash && <a href={`https://stellar.expert/explorer/testnet/tx/${notice.hash}`} target="_blank" rel="noreferrer">View transaction <ExternalLink size={13} /></a>}</div></div>}
           {lastProof && <div className="payroll-proof">
@@ -665,6 +701,7 @@ function Employee({ wallet, connect }: { wallet: WalletState | null; connect: ()
         <div className="wallet-overview panel"><div><span>CONNECTED WALLET</span><strong>{short(wallet.address, 8)}</strong><button onClick={() => navigator.clipboard.writeText(wallet.address)}><Copy size={14} /> Copy</button></div><div className="overview-stat"><span>LOCKED & CLAIMABLE</span><strong>{formatAmount(totals)} <small>{records[0]?.asset === 'native' || !records[0] ? ASSET_LABEL : records[0].asset.split(':')[0]}</small></strong></div><div className="overview-stat"><span>ACTIVE PAYOUTS (TRANCHES)</span><strong>{records.length}</strong></div><Button className="refresh-button" onClick={refresh} loading={busy}><RefreshCw size={17} /></Button></div>
         {notice && <div className={`notice wide ${notice.type}`}>{notice.type === 'success' ? <Check size={18} /> : <X size={18} />} {notice.text}</div>}
         {conversionReceipt && <ClaimConversionReceipt receipt={conversionReceipt} />}
+        <FundCard wallet={wallet} />
         <TrustlineCard wallet={wallet} connect={connect} message={`Add a trustline before claiming this issued asset.`} />
         <div className="timeline-head"><div><h2>Vesting timeline</h2><p>Claimable balances addressed to your wallet.</p></div><span>{records.length} active</span></div>
         {busy && records.length === 0 ? <div className="loading-state"><LoaderCircle className="spin" /><span>Reading Stellar ledger…</span></div> : records.length === 0 ? <div className="empty large panel"><div><Clock3 /></div><h3>No active pay found</h3><p>Ask your employer to create a schedule for <span className="mono">{short(wallet.address, 8)}</span>, then refresh.</p><Button className="button-ghost" onClick={refresh}><RefreshCw size={16} /> Refresh ledger</Button></div> : <div className="balance-list">{records.map((record) => <BalanceCard key={record.balance_id} record={record} address={wallet.address} onClaim={claim} onConvert={supportsConversion(record, CONVERSION_PAIR) ? setConverting : undefined} disabled={!!claiming || busy} claiming={claiming === record.balance_id} />)}</div>}
