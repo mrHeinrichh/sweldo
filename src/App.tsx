@@ -35,6 +35,7 @@ import {
   getClaimHistory,
   getClaimableBalances,
   getXlmBalance,
+  hasTrustline,
   parseUnlockTime,
   recordScheduleProof,
   registryContractId,
@@ -43,6 +44,8 @@ import {
   type WalletState,
 } from './lib/stellar'
 import './App.css'
+import { ClaimConversionDialog, ClaimConversionReceipt } from './components/ClaimConversion'
+import { configuredConversion, supportsConversion, type ConversionReceipt } from './lib/claim-convert'
 
 type View = 'home' | 'employer' | 'employee'
 type ScheduleMeta = {
@@ -85,6 +88,7 @@ type PayrollProof = {
 
 const ASSET = configuredAsset()
 const ASSET_LABEL = assetLabel(ASSET)
+const CONVERSION_PAIR = configuredConversion(import.meta.env)
 const META_KEY = 'sweldo-schedules-v1'
 const CLAIM_HISTORY_KEY = 'sweldo-claim-history-v1'
 
@@ -284,6 +288,39 @@ function DashboardShell({ title, subtitle, children }: { title: string; subtitle
   return <main className="dashboard"><div className="dash-head"><div><h1>{title}</h1><p>{subtitle}</p></div><span className="network-banner"><span /> Stellar Testnet</span></div>{children}</main>
 }
 
+function TrustlineCard({ wallet, connect, message }: { wallet: WalletState | null; connect: () => void; message: string }) {
+  const [needed, setNeeded] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    let cancelled = false
+    setNeeded(false)
+    if (!wallet || ASSET.isNative()) return
+    hasTrustline(wallet.address, ASSET)
+      .then((exists) => { if (!cancelled) setNeeded(!exists) })
+      .catch(() => { if (!cancelled) setNeeded(true) })
+    return () => { cancelled = true }
+  }, [wallet])
+
+  async function enable() {
+    if (!wallet) return connect()
+    setBusy(true)
+    setError('')
+    try {
+      await addTrustline(wallet.address, ASSET)
+      setNeeded(!(await hasTrustline(wallet.address, ASSET)))
+    } catch (err) {
+      setError(friendlyError(err))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  if (!needed) return null
+  return <div className="trustline-card"><div><CircleDollarSign /><span><strong>New to {ASSET_LABEL}?</strong><small>{message}</small>{error && <small className="error-text">{error}</small>}</span></div><Button type="button" className="button-ghost" onClick={enable} loading={busy}>Enable {ASSET_LABEL}</Button></div>
+}
+
 function Employer({ wallet, connect }: { wallet: WalletState | null; connect: () => void }) {
   const [recipients, setRecipients] = useState<PayrollRecipient[]>(() => [createPayrollRecipient()])
   const [tranches, setTranches] = useState(4)
@@ -469,6 +506,7 @@ function Employer({ wallet, connect }: { wallet: WalletState | null; connect: ()
       <div className="dashboard-grid">
         <form className="panel form-panel" onSubmit={submit}>
           <div className="panel-title"><div><h2>New payroll schedule</h2><p>One transaction creates every time-locked payout (tranche).</p></div><span><Plus size={16} /></span></div>
+          <TrustlineCard wallet={wallet} connect={connect} message={`Add a ${ASSET_LABEL} trustline so this wallet can hold and lock ${ASSET_LABEL} for payroll.`} />
           {notice && <div className={`notice ${notice.type}`}>{notice.type === 'success' ? <Check size={18} /> : <X size={18} />}<div>{notice.text}{notice.hash && <a href={`https://stellar.expert/explorer/testnet/tx/${notice.hash}`} target="_blank" rel="noreferrer">View transaction <ExternalLink size={13} /></a>}</div></div>}
           {lastProof && <div className="payroll-proof">
             <div className="proof-title"><ShieldCheck size={18} /><div><strong>Payroll proof</strong><span>{lastProof.payouts} payouts per employee ({lastProof.payouts} tranches) confirmed on Stellar Testnet.</span></div></div>
@@ -531,14 +569,14 @@ function Employer({ wallet, connect }: { wallet: WalletState | null; connect: ()
   )
 }
 
-function BalanceCard({ record, onClaim, claiming }: { record: BalanceRecord; onClaim: (record: BalanceRecord) => void; claiming: boolean }) {
-  const unlockAt = parseUnlockTime(record.claimants[0]?.predicate ?? {})
+function BalanceCard({ record, address, onClaim, onConvert, claiming, disabled }: { record: BalanceRecord; address: string; onClaim: (record: BalanceRecord) => void; onConvert?: (record: BalanceRecord) => void; claiming: boolean; disabled: boolean }) {
+  const unlockAt = parseUnlockTime(record.claimants.find((claimant) => claimant.destination === address)?.predicate ?? {})
   const countdown = useCountdown(unlockAt)
   return (
     <article className={`balance-card ${countdown.unlocked ? 'unlocked' : ''}`}>
       <div className="status-icon">{countdown.unlocked ? <BadgeCheck /> : <LockKeyhole />}</div>
       <div className="balance-main"><span className="status-label">{countdown.unlocked ? 'READY TO CLAIM' : 'LOCKED'}</span><strong>{formatAmount(record.amount)} <small>{record.asset === 'native' ? 'XLM' : record.asset.split(':')[0]}</small></strong><span className="unlock-date">{unlockAt ? (countdown.unlocked ? `Unlocked ${unlockAt.toLocaleString()}` : `Unlocks ${unlockAt.toLocaleString()}`) : 'Available unconditionally'}</span></div>
-      <div className="balance-action">{countdown.unlocked ? <Button className="button-primary" onClick={() => onClaim(record)} loading={claiming}>Claim now <ArrowRight size={16} /></Button> : <div className="countdown"><Clock3 size={15} /><span>{countdown.label}</span></div>}<a href={`https://stellar.expert/explorer/testnet/claimable-balance/${record.balance_id}`} target="_blank" rel="noreferrer">View on-chain <ExternalLink size={12} /></a></div>
+      <div className="balance-action">{countdown.unlocked ? <>{onConvert && <Button className="button-primary" disabled={disabled} onClick={() => onConvert(record)}>Claim as PHPT <ArrowRight size={16} /></Button>}<Button className={onConvert ? 'claim-original' : 'button-primary'} disabled={disabled} onClick={() => onClaim(record)} loading={claiming}>{onConvert ? 'Claim USDC only' : 'Claim now'}{!onConvert && <ArrowRight size={16} />}</Button></> : <div className="countdown"><Clock3 size={15} /><span>{countdown.label}</span></div>}<a href={`https://stellar.expert/explorer/testnet/claimable-balance/${record.balance_id}`} target="_blank" rel="noreferrer">View on-chain <ExternalLink size={12} /></a></div>
     </article>
   )
 }
@@ -560,6 +598,8 @@ function Employee({ wallet, connect }: { wallet: WalletState | null; connect: ()
   const [history, setHistory] = useState<ClaimHistoryRecord[]>([])
   const [busy, setBusy] = useState(false)
   const [claiming, setClaiming] = useState('')
+  const [converting, setConverting] = useState<BalanceRecord | null>(null)
+  const [conversionReceipt, setConversionReceipt] = useState<ConversionReceipt | null>(null)
   const [notice, setNotice] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
 
   const refresh = useCallback(async () => {
@@ -582,6 +622,19 @@ function Employee({ wallet, connect }: { wallet: WalletState | null; connect: ()
 
   useEffect(() => { void refresh() }, [refresh])
   const totals = useMemo(() => records.reduce((sum, record) => sum + Number(record.amount), 0), [records])
+
+  function conversionCompleted(receipt: ConversionReceipt) {
+    if (!wallet) return
+    setConversionReceipt(receipt)
+    setConverting(null)
+    try {
+      saveClaimHistory(wallet.address, {
+        id: receipt.balanceId, balanceId: receipt.balanceId, transactionHash: receipt.hash,
+        claimedAt: new Date().toISOString(), amount: receipt.receivedAmount ?? undefined, asset: 'PHPT', source: 'local',
+      })
+    } catch { /* A full browser cache must not hide a confirmed transaction receipt. */ }
+    void refresh()
+  }
 
   async function claim(record: BalanceRecord) {
     if (!wallet) return connect()
@@ -606,28 +659,17 @@ function Employee({ wallet, connect }: { wallet: WalletState | null; connect: ()
     }
   }
 
-  async function trust() {
-    if (!wallet) return connect()
-    setBusy(true)
-    try {
-      await addTrustline(wallet.address, ASSET)
-      setNotice({ type: 'success', text: `${ASSET_LABEL} is now enabled in your wallet.` })
-    } catch (error) {
-      setNotice({ type: 'error', text: friendlyError(error) })
-    } finally {
-      setBusy(false)
-    }
-  }
-
   return (
     <DashboardShell title="My pay" subtitle="Your on-chain salary, unlocked on schedule.">
       {!wallet ? <div className="connect-state panel"><div className="wallet-orbit"><Wallet /></div><h2>Connect to see your pay</h2><p>Use the Freighter wallet that your employer added to the payroll schedule.</p><Button className="button-primary button-large" onClick={connect}><Wallet size={18} /> Connect Freighter</Button></div> : <>
         <div className="wallet-overview panel"><div><span>CONNECTED WALLET</span><strong>{short(wallet.address, 8)}</strong><button onClick={() => navigator.clipboard.writeText(wallet.address)}><Copy size={14} /> Copy</button></div><div className="overview-stat"><span>LOCKED & CLAIMABLE</span><strong>{formatAmount(totals)} <small>{records[0]?.asset === 'native' || !records[0] ? ASSET_LABEL : records[0].asset.split(':')[0]}</small></strong></div><div className="overview-stat"><span>ACTIVE PAYOUTS (TRANCHES)</span><strong>{records.length}</strong></div><Button className="refresh-button" onClick={refresh} loading={busy}><RefreshCw size={17} /></Button></div>
         {notice && <div className={`notice wide ${notice.type}`}>{notice.type === 'success' ? <Check size={18} /> : <X size={18} />} {notice.text}</div>}
-        {!ASSET.isNative() && <div className="trustline-card"><div><CircleDollarSign /><span><strong>New to {ASSET_LABEL}?</strong><small>Add a trustline before claiming this issued asset.</small></span></div><Button className="button-ghost" onClick={trust} loading={busy}>Enable {ASSET_LABEL}</Button></div>}
+        {conversionReceipt && <ClaimConversionReceipt receipt={conversionReceipt} />}
+        <TrustlineCard wallet={wallet} connect={connect} message={`Add a trustline before claiming this issued asset.`} />
         <div className="timeline-head"><div><h2>Vesting timeline</h2><p>Claimable balances addressed to your wallet.</p></div><span>{records.length} active</span></div>
-        {busy && records.length === 0 ? <div className="loading-state"><LoaderCircle className="spin" /><span>Reading Stellar ledger…</span></div> : records.length === 0 ? <div className="empty large panel"><div><Clock3 /></div><h3>No active pay found</h3><p>Ask your employer to create a schedule for <span className="mono">{short(wallet.address, 8)}</span>, then refresh.</p><Button className="button-ghost" onClick={refresh}><RefreshCw size={16} /> Refresh ledger</Button></div> : <div className="balance-list">{records.map((record) => <BalanceCard key={record.balance_id} record={record} onClaim={claim} claiming={claiming === record.balance_id} />)}</div>}
+        {busy && records.length === 0 ? <div className="loading-state"><LoaderCircle className="spin" /><span>Reading Stellar ledger…</span></div> : records.length === 0 ? <div className="empty large panel"><div><Clock3 /></div><h3>No active pay found</h3><p>Ask your employer to create a schedule for <span className="mono">{short(wallet.address, 8)}</span>, then refresh.</p><Button className="button-ghost" onClick={refresh}><RefreshCw size={16} /> Refresh ledger</Button></div> : <div className="balance-list">{records.map((record) => <BalanceCard key={record.balance_id} record={record} address={wallet.address} onClaim={claim} onConvert={supportsConversion(record, CONVERSION_PAIR) ? setConverting : undefined} disabled={!!claiming || busy} claiming={claiming === record.balance_id} />)}</div>}
         <ClaimHistory history={history} />
+        {converting && CONVERSION_PAIR && <ClaimConversionDialog address={wallet.address} payout={converting} pair={CONVERSION_PAIR} onClose={() => setConverting(null)} onComplete={conversionCompleted} />}
       </>}
     </DashboardShell>
   )
@@ -666,7 +708,7 @@ function App() {
       {wallet && wallet.network !== 'TESTNET' && <div className="wrong-network">Freighter is on {wallet.network}. Switch it to <strong>Testnet</strong> before signing.</div>}
       {view === 'home' && <Home go={go} />}
       {view === 'employer' && <Employer wallet={wallet} connect={connect} />}
-      {view === 'employee' && <Employee wallet={wallet} connect={connect} />}
+      {view === 'employee' && <Employee key={wallet?.address} wallet={wallet} connect={connect} />}
       <footer><Logo onClick={() => go('home')} /><p>Payroll that keeps its promise. Built on Stellar Testnet.</p><a href="https://stellar.org" target="_blank" rel="noreferrer">Built on Stellar <ExternalLink size={13} /></a></footer>
       {registryContractId() && <div className="contract-ribbon">Soroban Payroll Registry: <a href={`https://stellar.expert/explorer/testnet/contract/${registryContractId()}`} target="_blank" rel="noreferrer">{short(registryContractId(), 8)}</a></div>}
     </div>
