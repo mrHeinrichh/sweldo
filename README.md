@@ -79,12 +79,25 @@ npm run week1:all
 
 See [`docs/week-1-testnet-demo.md`](docs/week-1-testnet-demo.md) for the flow chart, individual commands, expected balances, and verification steps. The test-USDC asset has no real value and is not Circle-issued USDC.
 
+## Instaward Week 2: Worker claim-and-convert
+
+The worker UI can claim a scheduled payout as PHPT for the configured Week 1 test-USDC/PHPT pair. It previews a quote with a 1% slippage limit, adds missing trustlines, combines the claim and path payment in one Testnet transaction, and displays a transaction-hash receipt.
+
+```bash
+npm run week2:test
+npm run week2:configure
+npm run week2:dev
+```
+
+Tests run locally without sending transactions. The dev server uses ignored `.env.week2.local`. See [the Week 2 flowchart and demo guide](docs/week-2-claim-convert-demo.md) for Testnet preparation, browser steps, expected results, failure checks, and a recording script. The test command requires Node 22.18+.
+
 ## Configuration
 
 | Variable | Purpose |
 | --- | --- |
 | `VITE_ASSET_CODE` | Issued asset code such as `USDC` |
 | `VITE_ASSET_ISSUER` | Issuer's Stellar public key |
+| `VITE_PHPT_ISSUER` | Controlled PHPT Testnet issuer; enables conversion for the configured USDC issuer |
 
 Both variables are required for issued-asset mode. If omitted, Sweldo uses native XLM. Employees must enable the issued asset before claiming.
 

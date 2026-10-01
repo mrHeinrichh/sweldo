@@ -11,7 +11,7 @@ import {
   TransactionBuilder,
   xdr,
 } from '@stellar/stellar-sdk'
-import { getNetwork, isConnected, requestAccess, signTransaction } from '@stellar/freighter-api'
+import { getAddress, getNetwork, isAllowed, isConnected, requestAccess, setAllowed, signTransaction } from '@stellar/freighter-api'
 
 export const HORIZON_URL = 'https://horizon-testnet.stellar.org'
 export const SOROBAN_RPC_URL = 'https://soroban-testnet.stellar.org'
@@ -71,25 +71,56 @@ function withTimeout<T>(promise: Promise<T>, milliseconds: number): Promise<T> {
   ])
 }
 
-export async function connectWallet(): Promise<WalletState> {
-  const connection = unwrap(
-    await withTimeout(isConnected(), 3_000),
-    'Could not detect Freighter',
-  )
-  if (!connection.isConnected) {
-    throw new Error('Freighter is not available. Install the extension, unlock it, and open Sweldo in the same browser.')
-  }
+async function detectFreighter(): Promise<boolean> {
+  // The extension injects its content script after page load, so a single early check can miss it.
+  const deadline = Date.now() + 4_000
+  do {
+    try {
+      const connection = await withTimeout(isConnected(), 1_500)
+      if (!connection.error && connection.isConnected) return true
+    } catch {
+      // not ready yet; retry
+    }
+    await wait(400)
+  } while (Date.now() < deadline)
+  return false
+}
 
-  const access = unwrap(
-    await withTimeout(requestAccess(), 30_000),
-    'Could not connect Freighter',
-  )
+export async function connectWallet(): Promise<WalletState> {
+  // If detection fails we still call requestAccess below: it talks to the extension directly
+  // and surfaces a precise error (locked, denied, or truly missing).
+  const detected = await detectFreighter()
+
+  let accessResult
+  try {
+    accessResult = await withTimeout(requestAccess(), 30_000)
+  } catch (error) {
+    if (!detected) {
+      throw new Error('Freighter is not available. Check chrome://extensions: enable Freighter, set Site access to "On all sites", unlock it, then reload this tab.')
+    }
+    throw error
+  }
+  const access = unwrap(accessResult, 'Could not connect Freighter')
+  let address = access.address
+
+  if (!address) {
+    // Some Freighter builds answer requestAccess without a key until this site is on the allow list.
+    // Allow the site, then read the active account directly.
+    try {
+      const allowed = await withTimeout(isAllowed(), 3_000)
+      if (!allowed.isAllowed) await withTimeout(setAllowed(), 30_000)
+      const active = await withTimeout(getAddress(), 5_000)
+      if (!active.error) address = active.address
+    } catch {
+      // fall through to the error below
+    }
+  }
   const network = unwrap(
     await withTimeout(getNetwork(), 5_000),
     'Could not read wallet network',
   )
-  if (!access.address) throw new Error('Freighter did not return an account. Unlock it and select an account first.')
-  return { address: access.address, network: network.network }
+  if (!address) throw new Error('Freighter did not return an account. Open the Freighter popup, unlock it, make sure an account is selected, approve the connection request for this site, then try again.')
+  return { address, network: network.network }
 }
 
 export async function loadAccount(address: string) {
@@ -330,6 +361,37 @@ export async function addTrustline(address: string, asset: Asset) {
   return signAndSubmit(transaction, address)
 }
 
+export async function isAccountFunded(address: string) {
+  try {
+    await loadAccount(address)
+    return true
+  } catch (error) {
+    if (isNotFound(error)) return false
+    throw error
+  }
+}
+
+// Friendbot is Stellar's public Testnet faucet; it only works on Testnet and sends valueless test XLM.
+export async function fundWithFriendbot(address: string) {
+  const response = await fetch(`https://friendbot.stellar.org/?addr=${encodeURIComponent(address)}`)
+  if (!response.ok) {
+    const detail = await response.text().catch(() => '')
+    if (detail.includes('op_already_exists') || detail.includes('already funded')) return
+    throw new Error('The free practice money service is busy. Wait a moment and try again.')
+  }
+}
+
+export async function hasTrustline(address: string, asset: Asset) {
+  if (asset.isNative()) return true
+  try {
+    const account = await loadAccount(address)
+    return account.balances.some((balance) => 'asset_code' in balance && balance.asset_code === asset.getCode() && balance.asset_issuer === asset.getIssuer())
+  } catch (error) {
+    if (isNotFound(error)) return false
+    throw error
+  }
+}
+
 export async function getClaimableBalances(address: string): Promise<BalanceRecord[]> {
   const page = await server.claimableBalances().claimant(address).limit(100).order('desc').call()
   return page.records.map((record) => {
@@ -342,7 +404,14 @@ export async function getClaimableBalances(address: string): Promise<BalanceReco
 }
 
 export async function getClaimHistory(address: string): Promise<ClaimHistoryRecord[]> {
-  const page = await server.operations().forAccount(address).limit(50).order('desc').call()
+  let page
+  try {
+    page = await server.operations().forAccount(address).limit(50).order('desc').call()
+  } catch (error) {
+    // Horizon answers 404 for an account that has never been funded; it simply has no history yet.
+    if (isNotFound(error)) return []
+    throw error
+  }
   return page.records
     .filter((record) => record.type === 'claim_claimable_balance')
     .map((record) => {
@@ -381,7 +450,15 @@ export function parseUnlockTime(predicate: Record<string, unknown>): Date | null
   return Number.isFinite(asNumber) ? new Date(asNumber * 1000) : new Date(String(value))
 }
 
+function isNotFound(error: unknown) {
+  const status = (error as { response?: { status?: number } })?.response?.status
+  return status === 404 || (error as { name?: string })?.name === 'NotFoundError'
+}
+
 export function friendlyError(error: unknown) {
+  if (isNotFound(error)) {
+    return 'This wallet is not funded on Stellar Testnet yet. Fund it with Friendbot (laboratory.stellar.org → Fund account), then refresh.'
+  }
   const fallback = error instanceof Error ? error.message : String(error)
   const response = (error as { response?: { data?: { extras?: { result_codes?: unknown } } } })?.response
   const codes = response?.data?.extras?.result_codes
