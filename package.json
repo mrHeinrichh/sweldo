@@ -12,6 +12,11 @@
     "week1:demo": "node scripts/week1-testnet.mjs demo",
     "week1:verify": "node scripts/week1-testnet.mjs verify",
     "week1:all": "node scripts/week1-testnet.mjs all",
+    "week2:test": "node --experimental-strip-types --test scripts/week2-claim-convert.test.mjs",
+    "week2:configure": "node scripts/week2-demo.mjs configure",
+    "week2:prepare": "node scripts/week2-demo.mjs prepare",
+    "week2:verify": "node scripts/week2-demo.mjs verify",
+    "week2:dev": "vite --mode week2 --host 127.0.0.1",
     "contract:build": "PATH=/opt/homebrew/opt/rustup/bin:$PATH stellar contract build",
     "contract:test": "PATH=/opt/homebrew/opt/rustup/bin:$PATH cargo test -p sweldo_payroll_registry"
   },
