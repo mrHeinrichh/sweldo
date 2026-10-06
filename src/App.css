@@ -131,3 +131,4 @@ footer { border-top:1px solid var(--line); max-width:1180px; margin:auto; paddin
 .collapse.open { grid-template-rows: 1fr; }
 .collapse > div { overflow: hidden; min-height: 0; }
 @media (prefers-reduced-motion: reduce) { .collapse, .collapse-chevron, .row-flash, .dice-roll { transition: none !important; animation: none !important; } }
+@media (max-width: 600px) { .batch-actions { width: 100%; } .batch-actions .button { flex: 1; width: auto; } }
