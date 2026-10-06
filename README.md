@@ -100,6 +100,13 @@ Freighter directly (`freighterwallet://`). Signatures then happen in the app, an
 
 Pairing needs `VITE_WALLETCONNECT_PROJECT_ID`; without it the option shows as not set up.
 
+## Guide
+
+A highlighting guide walks through the app: it dims the page, spotlights one control at a time, and
+explains it, switching between the home, employer and pay pages as it goes. Highlighted controls stay
+usable (drag the payout track mid-tour). It opens on a first visit and any time from **Guide** in the
+top bar; → / ← move, Esc closes.
+
 ## Smart pay schedule
 
 The payroll form reads as one sentence you edit: "Pay *every week*, *6 times*, starting
