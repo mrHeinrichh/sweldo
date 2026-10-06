@@ -1,4 +1,4 @@
-import { getNetwork, requestAccess, signTransaction } from '@stellar/freighter-api'
+import { currentAccount, signXdr } from './wallets'
 import { Horizon, Networks, TransactionBuilder } from '@stellar/stellar-sdk'
 import { prepareClaimConversion, type ConversionQuote, type ConversionReceipt } from './claim-convert.ts'
 
@@ -11,16 +11,12 @@ export class SubmissionUncertain extends Error {
 }
 
 export async function claimAndConvert(server: Horizon.Server, quote: ConversionQuote): Promise<ConversionReceipt> {
-  const network = await getNetwork()
-  if (network.error) throw new Error(network.error.message || 'Could not read Freighter network.')
-  if (network.networkPassphrase !== Networks.TESTNET) throw new Error('Switch Freighter to Testnet before signing.')
-  const access = await requestAccess()
-  if (access.error) throw new Error(access.error.message || 'Wallet access was rejected.')
-  if (access.address !== quote.address) throw new Error('The selected Freighter account changed. Reconnect the worker wallet.')
+  const account = await currentAccount()
+  if (account.network !== 'TESTNET' && account.networkPassphrase !== Networks.TESTNET) throw new Error('Switch Freighter to Testnet before signing.')
+  if (account.address !== quote.address) throw new Error('The selected Freighter account changed. Reconnect the worker wallet.')
   const transaction = await prepareClaimConversion(server, quote)
-  const signed = await signTransaction(transaction.toXDR(), { address: quote.address, networkPassphrase: Networks.TESTNET })
-  if (signed.error) throw new Error(signed.error.message || 'Signing was cancelled. Nothing was submitted.')
-  const signedTransaction = TransactionBuilder.fromXDR(signed.signedTxXdr, Networks.TESTNET)
+  const signed = await signXdr(transaction.toXDR(), quote.address, Networks.TESTNET)
+  const signedTransaction = TransactionBuilder.fromXDR(signed, Networks.TESTNET)
   if (signedTransaction.hash().toString('hex') !== transaction.hash().toString('hex')) {
     throw new Error('The signed transaction did not match the reviewed payout. Nothing was submitted.')
   }

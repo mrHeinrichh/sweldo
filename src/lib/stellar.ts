@@ -11,18 +11,15 @@ import {
   TransactionBuilder,
   xdr,
 } from '@stellar/stellar-sdk'
-import { getAddress, getNetwork, isAllowed, isConnected, requestAccess, setAllowed, signTransaction } from '@stellar/freighter-api'
+import { signXdr } from './wallets'
+
+export type { WalletState } from './wallets'
 
 export const HORIZON_URL = 'https://horizon-testnet.stellar.org'
 export const SOROBAN_RPC_URL = 'https://soroban-testnet.stellar.org'
 export const NETWORK_PASSPHRASE = Networks.TESTNET
 export const server = new Horizon.Server(HORIZON_URL)
 export const rpcServer = new rpc.Server(SOROBAN_RPC_URL)
-
-export type WalletState = {
-  address: string
-  network: string
-}
 
 export type BalanceRecord = {
   id: string
@@ -50,77 +47,6 @@ export type ClaimHistoryRecord = {
 export type ScheduleRecipient = {
   employee: string
   amountPerPayout: string
-}
-
-type FreighterError = { code?: number; message?: string; ext?: string[] }
-
-function unwrap<T>(result: { error?: FreighterError } & T, label: string): T {
-  if (result.error) {
-    const detail = result.error.message || result.error.ext?.join(', ') || `error ${result.error.code ?? 'unknown'}`
-    throw new Error(`${label}: ${detail}`)
-  }
-  return result
-}
-
-function withTimeout<T>(promise: Promise<T>, milliseconds: number): Promise<T> {
-  return Promise.race([
-    promise,
-    new Promise<T>((_, reject) => {
-      window.setTimeout(() => reject(new Error('Freighter did not respond. Unlock the extension and try again.')), milliseconds)
-    }),
-  ])
-}
-
-async function detectFreighter(): Promise<boolean> {
-  // The extension injects its content script after page load, so a single early check can miss it.
-  const deadline = Date.now() + 4_000
-  do {
-    try {
-      const connection = await withTimeout(isConnected(), 1_500)
-      if (!connection.error && connection.isConnected) return true
-    } catch {
-      // not ready yet; retry
-    }
-    await wait(400)
-  } while (Date.now() < deadline)
-  return false
-}
-
-export async function connectWallet(): Promise<WalletState> {
-  // If detection fails we still call requestAccess below: it talks to the extension directly
-  // and surfaces a precise error (locked, denied, or truly missing).
-  const detected = await detectFreighter()
-
-  let accessResult
-  try {
-    accessResult = await withTimeout(requestAccess(), 30_000)
-  } catch (error) {
-    if (!detected) {
-      throw new Error('Freighter is not available. Check chrome://extensions: enable Freighter, set Site access to "On all sites", unlock it, then reload this tab.')
-    }
-    throw error
-  }
-  const access = unwrap(accessResult, 'Could not connect Freighter')
-  let address = access.address
-
-  if (!address) {
-    // Some Freighter builds answer requestAccess without a key until this site is on the allow list.
-    // Allow the site, then read the active account directly.
-    try {
-      const allowed = await withTimeout(isAllowed(), 3_000)
-      if (!allowed.isAllowed) await withTimeout(setAllowed(), 30_000)
-      const active = await withTimeout(getAddress(), 5_000)
-      if (!active.error) address = active.address
-    } catch {
-      // fall through to the error below
-    }
-  }
-  const network = unwrap(
-    await withTimeout(getNetwork(), 5_000),
-    'Could not read wallet network',
-  )
-  if (!address) throw new Error('Freighter did not return an account. Open the Freighter popup, unlock it, make sure an account is selected, approve the connection request for this site, then try again.')
-  return { address, network: network.network }
 }
 
 export async function loadAccount(address: string) {
@@ -156,14 +82,8 @@ export async function getXlmBalance(address: string) {
 }
 
 async function signAndSubmit(transaction: ReturnType<TransactionBuilder['build']>, address: string) {
-  const signed = unwrap(
-    await signTransaction(transaction.toXDR(), {
-      address,
-      networkPassphrase: NETWORK_PASSPHRASE,
-    }),
-    'Freighter could not sign the transaction',
-  )
-  return server.submitTransaction(TransactionBuilder.fromXDR(signed.signedTxXdr, NETWORK_PASSPHRASE))
+  const signed = await signXdr(transaction.toXDR(), address, NETWORK_PASSPHRASE)
+  return server.submitTransaction(TransactionBuilder.fromXDR(signed, NETWORK_PASSPHRASE))
 }
 
 function wait(milliseconds: number) {
@@ -232,14 +152,8 @@ export async function recordScheduleProof(input: {
     .build()
 
   const prepared = await rpcServer.prepareTransaction(transaction)
-  const signed = unwrap(
-    await signTransaction(prepared.toXDR(), {
-      address: input.employer,
-      networkPassphrase: NETWORK_PASSPHRASE,
-    }),
-    'Freighter could not sign the Soroban registry proof',
-  )
-  const signedTransaction = TransactionBuilder.fromXDR(signed.signedTxXdr, NETWORK_PASSPHRASE)
+  const signed = await signXdr(prepared.toXDR(), input.employer, NETWORK_PASSPHRASE)
+  const signedTransaction = TransactionBuilder.fromXDR(signed, NETWORK_PASSPHRASE)
   const response = await rpcServer.sendTransaction(signedTransaction)
   if (response.status === 'ERROR') {
     throw new Error(`Soroban registry proof failed: ${JSON.stringify(response.errorResult)}`)
