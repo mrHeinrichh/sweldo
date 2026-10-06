@@ -91,6 +91,18 @@ npm run week2:dev
 
 Tests run locally without sending transactions. The dev server uses ignored `.env.week2.local`. See [the Week 2 flowchart and demo guide](docs/week-2-claim-convert-demo.md) for Testnet preparation, browser steps, expected results, failure checks, and a recording script. The test command requires Node 22.18+.
 
+## Smart pay schedule
+
+The payroll form reads as one sentence you edit: "Pay *every week*, *6 times*, starting
+*in 1 week*." Each underlined part opens a menu, including "Pay until a date…" and "On a date…".
+A 50-slot payout track sets the count by drag, click or arrow keys and locks slots beyond the
+team's one-transaction limit. Presets (live demo, daily, weekly, monthly) fill everything at once,
+and live insights show the first and last payday, transaction capacity, and whether the connected
+wallet covers the total plus payout reserves. **Shuffle** fills the form with random sample values
+(wallet addresses are kept). Recent schedules stay hidden until there is one, then collapse.
+
+The same component exists in the Flutter app (`sweldo_flutter/`).
+
 ## Configuration
 
 | Variable | Purpose |
