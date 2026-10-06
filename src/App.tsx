@@ -5,9 +5,11 @@ import {
   Banknote,
   Check,
   ChevronDown,
+  Compass,
   CircleDollarSign,
   Clock3,
   Copy,
+  Dices,
   ExternalLink,
   Landmark,
   LoaderCircle,
@@ -29,12 +31,12 @@ import {
   cancelBalances,
   claimBalance,
   configuredAsset,
-  connectWallet,
   createBatchSchedule,
   friendlyError,
   getClaimHistory,
   getClaimableBalances,
   getXlmBalance,
+  getBalances,
   fundWithFriendbot,
   hasTrustline,
   isAccountFunded,
@@ -43,11 +45,17 @@ import {
   registryContractId,
   type BalanceRecord,
   type ClaimHistoryRecord,
+  type WalletBalances,
   type WalletState,
 } from './lib/stellar'
 import './App.css'
 import { ClaimConversionDialog, ClaimConversionReceipt } from './components/ClaimConversion'
 import { configuredConversion, supportsConversion, type ConversionReceipt } from './lib/claim-convert'
+import { PayScheduleBuilder, type SchedulePatch } from './components/PayScheduleBuilder'
+import { CADENCES, firstPayday, rollSample, type Cadence } from './lib/schedule'
+import { ApprovalPrompt, ConnectWalletModal } from './components/ConnectWalletModal'
+import { GuidedTour, type TourStep } from './components/GuidedTour'
+import { disconnect as disconnectWallet, onPendingApproval, onWalletDisconnected, restore as restoreWallet } from './lib/wallets'
 
 type View = 'home' | 'employer' | 'employee'
 type ScheduleMeta = {
@@ -196,13 +204,13 @@ function Logo({ onClick }: { onClick: () => void }) {
 
 function WalletButton({ wallet, onConnect, busy }: { wallet: WalletState | null; onConnect: () => void; busy: boolean }) {
   return (
-    <Button className={wallet ? 'wallet-connected' : 'button-dark'} onClick={onConnect} loading={busy}>
+    <Button className={wallet ? 'wallet-connected' : 'button-dark'} onClick={onConnect} loading={busy} data-tour="connect">
       {wallet ? <><span className="live-dot" />{short(wallet.address, 4)}<ChevronDown size={15} /></> : <><Wallet size={17} /> Connect wallet</>}
     </Button>
   )
 }
 
-function Header({ wallet, connect, busy, go, view }: { wallet: WalletState | null; connect: () => void; busy: boolean; go: (v: View) => void; view: View }) {
+function Header({ wallet, connect, busy, go, view, onGuide }: { wallet: WalletState | null; connect: () => void; busy: boolean; go: (v: View) => void; view: View; onGuide: () => void }) {
   const [open, setOpen] = useState(false)
   return (
     <header>
@@ -215,6 +223,7 @@ function Header({ wallet, connect, busy, go, view }: { wallet: WalletState | nul
           <a href="https://stellar.expert/explorer/testnet" target="_blank" rel="noreferrer">Explorer <ExternalLink size={13} /></a>
         </nav>
         <div className="nav-actions">
+          <button type="button" className="tour-launch" onClick={onGuide} aria-label="Open the guide"><Compass size={14} /><span>Guide</span></button>
           <span className="network-pill"><span /> Testnet</span>
           <WalletButton wallet={wallet} onConnect={connect} busy={busy} />
           <button className="menu-button" onClick={() => setOpen(!open)}>{open ? <X /> : <Menu />}</button>
@@ -233,7 +242,7 @@ function Home({ go }: { go: (view: View) => void }) {
           <div className="eyebrow"><Sparkles size={14} /> Payroll, secured by Stellar</div>
           <h1>Payday should be<br /><span>promised in code.</span></h1>
           <p>Lock salaries on-chain. Let your team claim the moment they unlock. No chasing, no custody, no borders.</p>
-          <div className="hero-actions">
+          <div className="hero-actions" data-tour="hero-actions">
             <Button className="button-primary button-large" onClick={() => go('employer')}>Create a payroll <ArrowRight size={18} /></Button>
             <Button className="button-ghost button-large" onClick={() => go('employee')}><Wallet size={18} /> View my pay</Button>
           </div>
@@ -357,10 +366,16 @@ function TrustlineCard({ wallet, connect, message }: { wallet: WalletState | nul
 }
 
 function Employer({ wallet, connect }: { wallet: WalletState | null; connect: () => void }) {
-  const [recipients, setRecipients] = useState<PayrollRecipient[]>(() => [createPayrollRecipient()])
-  const [tranches, setTranches] = useState(4)
-  const [interval, setInterval] = useState('minute')
-  const [firstDelay, setFirstDelay] = useState(1)
+  // Every visit starts from a random sample; Shuffle rolls a new one.
+  const [initialSample] = useState(() => rollSample(1))
+  const [recipients, setRecipients] = useState<PayrollRecipient[]>(() => [{ ...createPayrollRecipient(initialSample.totals[0]), name: initialSample.names[0] }])
+  const [tranches, setTranches] = useState(initialSample.payouts)
+  const [interval, setInterval] = useState<Cadence>(initialSample.cadence)
+  const [firstDelay, setFirstDelay] = useState(initialSample.firstDelay)
+  const [firstPaydayAt, setFirstPaydayAt] = useState<Date | null>(null)
+  const [shuffles, setShuffles] = useState(0)
+  const [balances, setBalances] = useState<WalletBalances | null | undefined>(undefined)
+  const [schedulesOpen, setSchedulesOpen] = useState(true)
   const [busy, setBusy] = useState(false)
   const [notice, setNotice] = useState<{ type: 'success' | 'error'; text: string; hash?: string } | null>(null)
   const [lastProof, setLastProof] = useState<PayrollProof | null>(null)
@@ -370,10 +385,43 @@ function Employer({ wallet, connect }: { wallet: WalletState | null; connect: ()
   const [cancelling, setCancelling] = useState('')
   const [now, setNow] = useState(Date.now())
   const totalLocked = recipients.reduce((sum, recipient) => sum + Number(recipient.total || 0), 0)
-  const balanceCount = recipients.length * tranches
   const employeeLabel = recipients.length === 1 ? 'employee' : 'employees'
   const amountEach = (total: string) => Number(total) > 0 && tranches > 0 ? (Number(total) / tranches).toFixed(7).replace(/\.?0+$/, '') : '0'
   const activeBalanceSet = useMemo(() => new Set(activeBalanceIds), [activeBalanceIds])
+
+  const refreshWalletBalances = useCallback(async () => {
+    if (!wallet?.address || wallet.network !== 'TESTNET') {
+      setBalances(undefined)
+      return
+    }
+    try {
+      setBalances(await getBalances(wallet.address, ASSET))
+    } catch {
+      setBalances(undefined)
+    }
+  }, [wallet?.address, wallet?.network])
+
+  useEffect(() => {
+    void refreshWalletBalances()
+  }, [refreshWalletBalances])
+
+  /** New sample values for everything except wallet addresses. */
+  function shuffle() {
+    const sample = rollSample(recipients.length)
+    setRecipients((current) => current.map((recipient, index) => ({ ...recipient, name: sample.names[index], total: sample.totals[index] })))
+    setTranches(sample.payouts)
+    setInterval(sample.cadence)
+    setFirstDelay(sample.firstDelay)
+    setFirstPaydayAt(null)
+    setShuffles((count) => count + 1)
+  }
+
+  function changeSchedule(patch: SchedulePatch) {
+    if (patch.cadence) setInterval(patch.cadence)
+    if (patch.payouts !== undefined) setTranches(patch.payouts)
+    if (patch.firstDelay !== undefined) setFirstDelay(patch.firstDelay)
+    if (patch.firstPaydayAt !== undefined) setFirstPaydayAt(patch.firstPaydayAt)
+  }
 
   const refreshEmployerBalances = useCallback(async () => {
     if (!wallet?.address) {
@@ -426,8 +474,8 @@ function Employer({ wallet, connect }: { wallet: WalletState | null; connect: ()
     if (payrollRows.some((recipient) => !recipient.employee.startsWith('G') || recipient.employee.length !== 56)) return setNotice({ type: 'error', text: 'Every employee needs a valid 56-character Stellar public key.' })
     if (payrollRows.some((recipient) => !(Number(recipient.total) > 0)) || tranches < 1 || tranches > 50) return setNotice({ type: 'error', text: 'Use positive payroll amounts and 1–50 payouts (tranches).' })
     if (payrollRows.length * tranches > 100) return setNotice({ type: 'error', text: 'This batch is too large for one Stellar transaction. Keep employees × payouts (tranches) at 100 or less.' })
-    const seconds = interval === 'minute' ? 60 : interval === 'day' ? 86400 : interval === 'week' ? 604800 : 2592000
-    const firstUnlock = new Date(Date.now() + firstDelay * seconds * 1000)
+    const seconds = CADENCES[interval].seconds
+    const firstUnlock = firstPayday(new Date(), interval, firstDelay, firstPaydayAt)
     setBusy(true)
     setNotice(null)
     try {
@@ -479,6 +527,7 @@ function Employer({ wallet, connect }: { wallet: WalletState | null; connect: ()
       }
       saveSchedules(createdSchedules)
       setSchedules(readSchedules())
+      void refreshWalletBalances()
       setActiveBalanceIds((current) => [...new Set([...current, ...result.balanceIds])])
       setBalancesLoaded(true)
       setLastProof({
@@ -538,7 +587,7 @@ function Employer({ wallet, connect }: { wallet: WalletState | null; connect: ()
 
   return (
     <DashboardShell title="Employer workspace" subtitle="Create payroll schedules that settle themselves.">
-      <div className="dashboard-grid">
+      <div className={`dashboard-grid ${schedules.length === 0 ? 'single' : ''}`}>
         <form className="panel form-panel" onSubmit={submit}>
           <div className="panel-title"><div><h2>New payroll schedule</h2><p>One transaction creates every time-locked payout (tranche).</p></div><span><Plus size={16} /></span></div>
           <FundCard wallet={wallet} />
@@ -554,9 +603,10 @@ function Employer({ wallet, connect }: { wallet: WalletState | null; connect: ()
               {lastProof.registryHash && <a className="proof-link" href={`https://stellar.expert/explorer/testnet/tx/${lastProof.registryHash}`} target="_blank" rel="noreferrer">Verify registry proof <ExternalLink size={13} /></a>}
             </>}
           </div>}
-          <div className="batch-head"><div><h3>Employees</h3><p>Add one or more wallets to fund in the same payroll transaction.</p></div><Button type="button" className="button-ghost" onClick={() => setRecipients((current) => [...current, createPayrollRecipient('')])}><Plus size={15} /> Add employee</Button></div>
+          <div className="batch-head" data-tour="employees"><div><h3>Employees</h3><p>Add one or more wallets to fund in the same payroll transaction.</p></div><div className="batch-actions"><Button type="button" className="button-ghost shuffle-button" data-tour="shuffle" onClick={shuffle} title="Fill the form with new sample values"><Dices size={15} key={shuffles} className={shuffles ? 'dice-roll' : ''} /> Shuffle</Button><Button type="button" className="button-ghost" onClick={() => setRecipients((current) => [...current, createPayrollRecipient('')])}><Plus size={15} /> Add employee</Button></div></div>
           <div className="employee-list">
             {recipients.map((recipient, index) => <div className="employee-row" key={recipient.id}>
+              {shuffles > 0 && <span className="row-flash" key={shuffles} aria-hidden="true" />}
               <div className="row-number">{String(index + 1).padStart(2, '0')}</div>
               <label>Employee name <span>optional</span><input value={recipient.name} onChange={(event) => updateRecipient(recipient.id, { name: event.target.value })} placeholder="e.g. Ana Santos" /></label>
               <label>Wallet address<input className="mono" value={recipient.employee} onChange={(event) => updateRecipient(recipient.id, { employee: event.target.value.trim() })} placeholder="G..." /></label>
@@ -564,22 +614,31 @@ function Employer({ wallet, connect }: { wallet: WalletState | null; connect: ()
               <button className="row-remove" type="button" disabled={recipients.length === 1} onClick={() => removeRecipient(recipient.id)} aria-label="Remove employee"><X size={15} /></button>
             </div>)}
           </div>
-          <div className="field-row">
-            <label>Number of payouts <span>(tranches)</span><input type="number" min="1" max="50" value={tranches} onChange={(e) => setTranches(Number(e.target.value))} /></label>
-            <label>Pay frequency <span>(Pay cadence)</span><select value={interval} onChange={(e) => setInterval(e.target.value)}><option value="minute">Every minute (demo)</option><option value="day">Daily</option><option value="week">Weekly</option><option value="month">Monthly</option></select></label>
-          </div>
-          <div className="field-row">
-            <label>First payday <span>(First unlock, intervals from now)</span><input type="number" min="0" value={firstDelay} onChange={(e) => setFirstDelay(Number(e.target.value))} /></label>
-            <div className="limit-note"><Clock3 size={16} /><span>{balanceCount}/100 claimable balances in this transaction</span></div>
-          </div>
+          <PayScheduleBuilder
+            cadence={interval}
+            payouts={tranches}
+            firstDelay={firstDelay}
+            firstPaydayAt={firstPaydayAt}
+            employees={recipients.length}
+            totalLocked={totalLocked}
+            assetLabel={ASSET_LABEL}
+            nativeAsset={ASSET.isNative()}
+            connected={Boolean(wallet)}
+            balances={balances}
+            onChange={changeSchedule}
+          />
           <div className="schedule-summary"><span><Users size={17} /> {recipients.length} {employeeLabel} × <strong>{tranches} payouts (tranches)</strong></span><span>Total locked <strong>{formatAmount(totalLocked)} {ASSET_LABEL}</strong></span></div>
           <div className="cancellation-policy"><RotateCcw size={17} /><div><strong>Future-payout protection</strong><span>You can cancel a future payout (tranche) before payday. At payday, the employee’s claim right activates and that payout cannot be cancelled.</span></div></div>
-          <Button className="button-primary full" type="submit" loading={busy}><LockKeyhole size={17} /> {wallet ? 'Lock payroll on Stellar' : 'Connect wallet to continue'}</Button>
+          <Button className="button-primary full" type="submit" loading={busy} data-tour="lock"><LockKeyhole size={17} /> {wallet ? 'Lock payroll on Stellar' : 'Connect wallet to continue'}</Button>
           <p className="fine-print"><ShieldCheck size={14} /> Funds go straight from your wallet into protocol-level claimable balances.</p>
         </form>
-        <aside className="panel side-panel">
-          <div className="panel-title"><div><h2>Recent schedules</h2><p>Saved locally on this device.</p></div></div>
-          {schedules.length === 0 ? <div className="empty"><div><Banknote /></div><h3>No schedules yet</h3><p>Your funded payrolls will appear here.</p></div> : <div className="schedule-list">{schedules.map((schedule) => {
+        {schedules.length > 0 && <aside className="panel side-panel">
+          <button type="button" className="panel-title collapsible-title" aria-expanded={schedulesOpen} onClick={() => setSchedulesOpen((open) => !open)}>
+            <div><h2>Recent schedules <span className="count-badge">{schedules.length}</span></h2><p>Saved locally on this device.</p></div>
+            <ChevronDown size={18} className="collapse-chevron" />
+          </button>
+          <div className={`collapse ${schedulesOpen ? 'open' : ''}`}><div>
+          <div className="schedule-list">{schedules.map((schedule) => {
             const remaining = cancellableIds(schedule)
             const isOriginalEmployer = Boolean(wallet && schedule.employer === wallet.address)
             return <article key={schedule.id}>
@@ -597,9 +656,9 @@ function Employer({ wallet, connect }: { wallet: WalletState | null; connect: ()
                 {schedule.registryContractId && <a href={`https://stellar.expert/explorer/testnet/contract/${schedule.registryContractId}`} target="_blank" rel="noreferrer">Soroban registry <ExternalLink size={11} /></a>}
               </div>
             </article>
-          })}</div>}
-          <div className="info-card"><Sparkles size={18} /><div><strong>Demo tip</strong><p>Choose “every minute” so judges can watch a payout (tranche) unlock live.</p></div></div>
-        </aside>
+          })}</div>
+          </div></div>
+        </aside>}
       </div>
     </DashboardShell>
   )
@@ -619,7 +678,7 @@ function BalanceCard({ record, address, onClaim, onConvert, claiming, disabled }
 
 function ClaimHistory({ history }: { history: ClaimHistoryRecord[] }) {
   return (
-    <section className="history-panel panel">
+    <section className="history-panel panel" data-tour="claim-history">
       <div className="timeline-head">
         <div><h2>Claim history</h2><p>Completed payroll claims for this wallet.</p></div>
         <span>{history.length} claimed</span>
@@ -697,14 +756,14 @@ function Employee({ wallet, connect }: { wallet: WalletState | null; connect: ()
 
   return (
     <DashboardShell title="My pay" subtitle="Your on-chain salary, unlocked on schedule.">
-      {!wallet ? <div className="connect-state panel"><div className="wallet-orbit"><Wallet /></div><h2>Connect to see your pay</h2><p>Use the Freighter wallet that your employer added to the payroll schedule.</p><Button className="button-primary button-large" onClick={connect}><Wallet size={18} /> Connect Freighter</Button></div> : <>
-        <div className="wallet-overview panel"><div><span>CONNECTED WALLET</span><strong>{short(wallet.address, 8)}</strong><button onClick={() => navigator.clipboard.writeText(wallet.address)}><Copy size={14} /> Copy</button></div><div className="overview-stat"><span>LOCKED & CLAIMABLE</span><strong>{formatAmount(totals)} <small>{records[0]?.asset === 'native' || !records[0] ? ASSET_LABEL : records[0].asset.split(':')[0]}</small></strong></div><div className="overview-stat"><span>ACTIVE PAYOUTS (TRANCHES)</span><strong>{records.length}</strong></div><Button className="refresh-button" onClick={refresh} loading={busy}><RefreshCw size={17} /></Button></div>
+      {!wallet ? <div className="connect-state panel"><div className="wallet-orbit"><Wallet /></div><h2>Connect to see your pay</h2><p>Use the Freighter wallet your employer added to the payroll, in this browser or on your phone.</p><Button className="button-primary button-large" onClick={connect} data-tour="connect-pay"><Wallet size={18} /> Connect Freighter</Button></div> : <>
+        <div className="wallet-overview panel" data-tour="pay-overview"><div><span>CONNECTED WALLET</span><strong>{short(wallet.address, 8)}</strong><button onClick={() => navigator.clipboard.writeText(wallet.address)}><Copy size={14} /> Copy</button></div><div className="overview-stat"><span>LOCKED & CLAIMABLE</span><strong>{formatAmount(totals)} <small>{records[0]?.asset === 'native' || !records[0] ? ASSET_LABEL : records[0].asset.split(':')[0]}</small></strong></div><div className="overview-stat"><span>ACTIVE PAYOUTS (TRANCHES)</span><strong>{records.length}</strong></div><Button className="refresh-button" onClick={refresh} loading={busy}><RefreshCw size={17} /></Button></div>
         {notice && <div className={`notice wide ${notice.type}`}>{notice.type === 'success' ? <Check size={18} /> : <X size={18} />} {notice.text}</div>}
         {conversionReceipt && <ClaimConversionReceipt receipt={conversionReceipt} />}
         <FundCard wallet={wallet} />
         <TrustlineCard wallet={wallet} connect={connect} message={`Add a trustline before claiming this issued asset.`} />
         <div className="timeline-head"><div><h2>Vesting timeline</h2><p>Claimable balances addressed to your wallet.</p></div><span>{records.length} active</span></div>
-        {busy && records.length === 0 ? <div className="loading-state"><LoaderCircle className="spin" /><span>Reading Stellar ledger…</span></div> : records.length === 0 ? <div className="empty large panel"><div><Clock3 /></div><h3>No active pay found</h3><p>Ask your employer to create a schedule for <span className="mono">{short(wallet.address, 8)}</span>, then refresh.</p><Button className="button-ghost" onClick={refresh}><RefreshCw size={16} /> Refresh ledger</Button></div> : <div className="balance-list">{records.map((record) => <BalanceCard key={record.balance_id} record={record} address={wallet.address} onClaim={claim} onConvert={supportsConversion(record, CONVERSION_PAIR) ? setConverting : undefined} disabled={!!claiming || busy} claiming={claiming === record.balance_id} />)}</div>}
+        {busy && records.length === 0 ? <div className="loading-state"><LoaderCircle className="spin" /><span>Reading Stellar ledger…</span></div> : records.length === 0 ? <div className="empty large panel"><div><Clock3 /></div><h3>No active pay found</h3><p>Ask your employer to create a schedule for <span className="mono">{short(wallet.address, 8)}</span>, then refresh.</p><Button className="button-ghost" onClick={refresh}><RefreshCw size={16} /> Refresh ledger</Button></div> : <div className="balance-list" data-tour="pay-timeline">{records.map((record) => <BalanceCard key={record.balance_id} record={record} address={wallet.address} onClaim={claim} onConvert={supportsConversion(record, CONVERSION_PAIR) ? setConverting : undefined} disabled={!!claiming || busy} claiming={claiming === record.balance_id} />)}</div>}
         <ClaimHistory history={history} />
         {converting && CONVERSION_PAIR && <ClaimConversionDialog address={wallet.address} payout={converting} pair={CONVERSION_PAIR} onClose={() => setConverting(null)} onComplete={conversionCompleted} />}
       </>}
@@ -712,36 +771,92 @@ function Employee({ wallet, connect }: { wallet: WalletState | null; connect: ()
   )
 }
 
+const TOUR_KEY = 'sweldo-tour-seen-v1'
+
+const TOUR: TourStep<View>[] = [
+  { view: 'home', title: 'Welcome to Sweldo', body: 'Lock a team’s pay on Stellar once, and each person claims it on payday. This guide takes about a minute. Use → and ← to move, Esc to close.' },
+  { view: 'home', target: '[data-tour="hero-actions"]', title: 'Two sides, one app', body: 'Employers set up payroll from “Create a payroll”. Workers open “View my pay” to claim.' },
+  { target: '[data-tour="connect"]', title: 'Connect Freighter', body: 'Use the Freighter extension in this browser, or scan a QR code with the Freighter app on your phone. Sweldo never sees your keys.' },
+  { view: 'employer', target: '[data-tour="employees"]', title: 'Add your team', body: 'Each row is one person: a name, their Stellar wallet address, and the total to pay them.' },
+  { view: 'employer', target: '[data-tour="shuffle"]', title: 'Try it with sample values', body: 'Shuffle fills in names, pay and a schedule so you can explore. Wallet addresses you typed stay put.', tryIt: 'Press Shuffle and watch the form roll.' },
+  { view: 'employer', target: '[data-tour="schedule-sentence"]', title: 'Read the schedule as a sentence', body: 'Each highlighted part is a menu: how often, how many times, and when pay starts. “Pay until a date” counts the paydays for you.', tryIt: 'Open one of the highlighted parts.' },
+  { view: 'employer', target: '[data-tour="payout-track"]', title: 'Drag to set the number of payouts', body: 'Each slot is one payout. Hatched slots are past what one Stellar transaction can hold for your team.', tryIt: 'Drag the handle left or right.' },
+  { view: 'employer', target: '[data-tour="presets"]', title: 'Or start from a preset', body: 'A live demo, daily, weekly or monthly plan sets everything at once.' },
+  { view: 'employer', target: '[data-tour="insights"]', title: 'Check before you sign', body: 'Live notes on the first and last payday, the transaction limit, and whether your wallet covers the total plus reserves.' },
+  { view: 'employer', target: '[data-tour="lock"]', title: 'Lock it with one signature', body: 'Freighter shows the transaction. Once you approve, every payout is locked on Stellar. You can cancel future payouts until each payday.' },
+  { view: 'employee', target: '[data-tour="connect-pay"]', title: 'Workers: connect to see your pay', body: 'Use the wallet your employer paid. Payouts unlock on their payday and you claim them straight to your wallet.' },
+  { view: 'employee', target: '[data-tour="pay-timeline"]', title: 'Claim on payday', body: 'Each locked payout counts down. When it reaches zero, Claim appears.' },
+  { view: 'employee', target: '[data-tour="claim-history"]', title: 'Every claim has a receipt', body: 'Claimed pay is listed here with a link to its transaction on Stellar Expert.' },
+  { title: 'You’re set', body: 'Open this guide any time from Guide in the top bar.' },
+]
+
 function App() {
   const [view, setView] = useState<View>('home')
   const [wallet, setWallet] = useState<WalletState | null>(null)
-  const [connecting, setConnecting] = useState(false)
+  const [connectOpen, setConnectOpen] = useState(false)
+  const [approvalPending, setApprovalPending] = useState(false)
   const [toast, setToast] = useState('')
+  const [tourOpen, setTourOpen] = useState(false)
 
-  async function connect() {
-    setConnecting(true)
+  function flash(message: string) {
+    setToast(message)
+    window.setTimeout(() => setToast(''), 3500)
+  }
+
+  useEffect(() => {
+    let cancelled = false
+    // A Freighter Mobile session survives reloads; pick it back up quietly.
+    restoreWallet().then((restored) => { if (restored && !cancelled) setWallet(restored) }).catch(() => {})
+    const stopDisconnect = onWalletDisconnected(() => {
+      setWallet(null)
+      flash('Freighter ended the session. Connect again to continue.')
+    })
+    const stopApproval = onPendingApproval(setApprovalPending)
+    // First visit: offer the guide once.
+    let seen = true
+    try { seen = localStorage.getItem(TOUR_KEY) === '1' } catch { /* storage may be blocked */ }
+    const timer = seen ? 0 : window.setTimeout(() => { if (!cancelled) setTourOpen(true) }, 900)
+    return () => { cancelled = true; window.clearTimeout(timer); stopDisconnect(); stopApproval() }
+  }, [])
+
+  function connect() {
+    setConnectOpen(true)
+  }
+
+  async function connected(next: WalletState) {
+    setWallet(next)
+    setConnectOpen(false)
     try {
-      const next = await connectWallet()
-      setWallet(next)
       const balance = await getXlmBalance(next.address)
-      setToast(`Connected · ${formatAmount(balance)} XLM`)
-      window.setTimeout(() => setToast(''), 3500)
+      flash(`Connected. ${formatAmount(balance)} XLM available.`)
     } catch (error) {
-      setToast(friendlyError(error))
-    } finally {
-      setConnecting(false)
+      flash(friendlyError(error))
     }
   }
 
-  function go(next: View) {
+  async function disconnect() {
+    await disconnectWallet()
+    setWallet(null)
+    flash('Wallet disconnected.')
+  }
+
+  const go = useCallback((next: View) => {
     setView(next)
     window.scrollTo({ top: 0, behavior: 'smooth' })
-  }
+  }, [])
+
+  const closeTour = useCallback(() => {
+    setTourOpen(false)
+    try { localStorage.setItem(TOUR_KEY, '1') } catch { /* ignore */ }
+  }, [])
 
   return (
     <div className="app">
-      <Header wallet={wallet} connect={connect} busy={connecting} go={go} view={view} />
-      {toast && <div className="toast">{toast}{toast.includes('Freighter is not available') && <a href="https://www.freighter.app/" target="_blank" rel="noreferrer">Get Freighter <ExternalLink size={12} /></a>}</div>}
+      <Header wallet={wallet} connect={connect} busy={false} go={go} view={view} onGuide={() => setTourOpen(true)} />
+      <GuidedTour open={tourOpen} steps={TOUR} onClose={closeTour} onNavigate={go} />
+      {toast && <div className="toast">{toast}</div>}
+      <ConnectWalletModal open={connectOpen} wallet={wallet} onClose={() => setConnectOpen(false)} onConnected={connected} onDisconnect={disconnect} />
+      <ApprovalPrompt pending={approvalPending} />
       {wallet && wallet.network !== 'TESTNET' && <div className="wrong-network">Freighter is on {wallet.network}. Switch it to <strong>Testnet</strong> before signing.</div>}
       {view === 'home' && <Home go={go} />}
       {view === 'employer' && <Employer wallet={wallet} connect={connect} />}
