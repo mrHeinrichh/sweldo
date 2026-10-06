@@ -91,6 +91,15 @@ npm run week2:dev
 
 Tests run locally without sending transactions. The dev server uses ignored `.env.week2.local`. See [the Week 2 flowchart and demo guide](docs/week-2-claim-convert-demo.md) for Testnet preparation, browser steps, expected results, failure checks, and a recording script. The test command requires Node 22.18+.
 
+## Connect with Freighter Mobile
+
+**Connect wallet** offers both Freighters. The browser extension works as before. The Freighter app pairs
+over WalletConnect: on a computer Sweldo shows a QR code to scan from the app; on a phone it opens
+Freighter directly (`freighterwallet://`). Signatures then happen in the app, and Sweldo shows an
+"Approve in the Freighter app" prompt while one is waiting. A paired session survives reloads.
+
+Pairing needs `VITE_WALLETCONNECT_PROJECT_ID`; without it the option shows as not set up.
+
 ## Smart pay schedule
 
 The payroll form reads as one sentence you edit: "Pay *every week*, *6 times*, starting
@@ -110,6 +119,7 @@ The same component exists in the Flutter app (`sweldo_flutter/`).
 | `VITE_ASSET_CODE` | Issued asset code such as `USDC` |
 | `VITE_ASSET_ISSUER` | Issuer's Stellar public key |
 | `VITE_PHPT_ISSUER` | Controlled PHPT Testnet issuer; enables conversion for the configured USDC issuer |
+| `VITE_WALLETCONNECT_PROJECT_ID` | Turns on **Freighter Mobile**: a QR code to scan on desktop, a deep link on phones. Free at [dashboard.reown.com](https://dashboard.reown.com); add your site's domain there. |
 
 Both variables are required for issued-asset mode. If omitted, Sweldo uses native XLM. Employees must enable the issued asset before claiming.
 
