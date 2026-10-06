@@ -127,6 +127,29 @@ export async function loadAccount(address: string) {
   return server.loadAccount(address)
 }
 
+export type WalletBalances = {
+  xlm: number
+  asset: number
+  /** XLM the account must keep as its own minimum balance. */
+  reservedXlm: number
+}
+
+/** XLM and payroll-asset balances, or null for an unfunded wallet. */
+export async function getBalances(address: string, asset: Asset): Promise<WalletBalances | null> {
+  try {
+    const account = await loadAccount(address)
+    const xlm = Number(account.balances.find((balance) => balance.asset_type === 'native')?.balance ?? 0)
+    const held = asset.isNative()
+      ? xlm
+      : Number(account.balances.find((balance) => 'asset_code' in balance
+        && balance.asset_code === asset.getCode() && balance.asset_issuer === asset.getIssuer())?.balance ?? 0)
+    return { xlm, asset: held, reservedXlm: (2 + Number(account.subentry_count)) * 0.5 }
+  } catch (error) {
+    if (isNotFound(error)) return null
+    throw error
+  }
+}
+
 export async function getXlmBalance(address: string) {
   const account = await loadAccount(address)
   return account.balances.find((balance) => balance.asset_type === 'native')?.balance ?? '0'
