@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/motion/effects.dart';
+import '../../core/responsive/breakpoints.dart';
 import '../../core/motion/interactive.dart';
 import '../../core/theme/motion.dart';
 import '../../core/theme/tokens.dart';
@@ -93,21 +94,26 @@ class _TopBar extends StatelessWidget {
         color: SwColors.paper,
         border: Border(bottom: BorderSide(color: SwColors.rule)),
       ),
+      // A fixed-height row keeps the controls centred in the bar when the
+      // inline navigation (which is 67px tall) isn't shown.
       child: ContentWidth(
-        child: Row(
-          children: [
-            SweldoLogo(onTap: () => context.go(AppRoute.overview.path)),
-            if (wide) ...[
-              const SizedBox(width: SwSpace.xxl),
-              _TopNav(current: current),
+        child: SizedBox(
+          height: 67,
+          child: Row(
+            children: [
+              SweldoLogo(onTap: () => context.go(AppRoute.overview.path)),
+              if (wide) ...[
+                const SizedBox(width: SwSpace.xxl),
+                _TopNav(current: current),
+              ],
+              const Spacer(),
+              _NetworkChip(compact: !context.up(Breakpoint.sm)),
+              const SizedBox(width: SwSpace.sm),
+              const _GuideButton(),
+              const SizedBox(width: SwSpace.sm),
+              const TourTarget(id: 'connect', child: WalletButton()),
             ],
-            const Spacer(),
-            const _NetworkChip(),
-            const SizedBox(width: SwSpace.sm),
-            const _GuideButton(),
-            const SizedBox(width: SwSpace.sm),
-            const TourTarget(id: 'connect', child: WalletButton()),
-          ],
+          ),
         ),
       ),
     );
@@ -212,34 +218,49 @@ class _TopNavItem extends StatelessWidget {
   }
 }
 
+/// "Testnet" with a live dot; just the dot on phones, where the bar is tight.
 class _NetworkChip extends StatelessWidget {
-  const _NetworkChip();
+  const _NetworkChip({this.compact = false});
+
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
+    const decoration = BoxDecoration(
+      color: SwColors.paydayWash,
+      borderRadius: BorderRadius.all(Radius.circular(999)),
+    );
     return Tooltip(
       message: 'Sweldo uses Stellar Testnet. Test money has no real value.',
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-        decoration: const BoxDecoration(
-          color: SwColors.paydayWash,
-          borderRadius: BorderRadius.all(Radius.circular(999)),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const PingDot(size: 7),
-            const SizedBox(width: 7),
-            Text(
-              'Testnet',
-              style: SwType.caption.copyWith(
-                color: SwColors.payday,
-                fontWeight: FontWeight.w700,
+      child: compact
+          ? Semantics(
+              label: 'Testnet',
+              child: Container(
+                width: 28,
+                height: 28,
+                alignment: Alignment.center,
+                decoration: decoration,
+                child: const PingDot(size: 7),
+              ),
+            )
+          : Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: decoration,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const PingDot(size: 7),
+                  const SizedBox(width: 7),
+                  Text(
+                    'Testnet',
+                    style: SwType.caption.copyWith(
+                      color: SwColors.payday,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
               ),
             ),
-          ],
-        ),
-      ),
     );
   }
 }
