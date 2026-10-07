@@ -57,9 +57,16 @@ final class PayrollSubmitted extends PayrollFormEvent {
   final WalletSession session;
 }
 
-/// Roll new sample values for every field except wallet addresses.
-final class PayrollRandomized extends PayrollFormEvent {
-  const PayrollRandomized();
+/// Every visit to the page starts a fresh draft: new sample values for
+/// every field except wallet addresses, back on the first step.
+final class PayrollDraftStarted extends PayrollFormEvent {
+  const PayrollDraftStarted();
+}
+
+/// Moves the wizard to [step] (0 team, 1 schedule, 2 review and lock).
+final class PayrollStepChanged extends PayrollFormEvent {
+  const PayrollStepChanged(this.step);
+  final int step;
 }
 
 final class PayrollNoticeDismissed extends PayrollFormEvent {

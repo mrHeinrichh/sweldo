@@ -10,7 +10,7 @@ class PayrollFormState extends Equatable {
     this.progress,
     this.notice,
     this.lastProof,
-    this.shuffles = 0,
+    this.step = 0,
     this.firstPaydayAt,
   });
 
@@ -29,8 +29,8 @@ class PayrollFormState extends Equatable {
   final NoticeData? notice;
   final PayrollProof? lastProof;
 
-  /// Counts Shuffle presses, so fields can flash when their values roll.
-  final int shuffles;
+  /// Wizard step: 0 team, 1 schedule, 2 review and lock.
+  final int step;
 
   /// A specific first payday picked on the calendar. Overrides
   /// [firstPaydayIn] when set.
@@ -61,6 +61,21 @@ class PayrollFormState extends Equatable {
   bool get overOperationLimit =>
       balanceCount > StellarNetwork.maxOperationsPerTransaction;
 
+  /// Employees without a valid wallet address, which blocks locking.
+  int get missingAddresses =>
+      recipients.where((r) => !r.hasValidAddress).length;
+
+  /// Employees whose total is empty or too small to split into [payouts].
+  int get invalidAmounts => recipients.where((r) {
+    final total = Amount.tryUnits(r.total) ?? BigInt.zero;
+    final each = Amount.tryUnits(amountPerPayout(r.total)) ?? BigInt.zero;
+    return total <= BigInt.zero || each <= BigInt.zero;
+  }).length;
+
+  /// Whether anything stops the payroll from being locked, wallet aside.
+  bool get blocked =>
+      missingAddresses > 0 || invalidAmounts > 0 || overOperationLimit;
+
   BigInt get totalLockedUnits => recipients.fold(
     BigInt.zero,
     (sum, r) => sum + (Amount.tryUnits(r.total) ?? BigInt.zero),
@@ -77,7 +92,7 @@ class PayrollFormState extends Equatable {
     String? Function()? progress,
     NoticeData? Function()? notice,
     PayrollProof? Function()? lastProof,
-    int? shuffles,
+    int? step,
     DateTime? Function()? firstPaydayAt,
   }) => PayrollFormState(
     recipients: recipients ?? this.recipients,
@@ -88,7 +103,7 @@ class PayrollFormState extends Equatable {
     progress: progress != null ? progress() : this.progress,
     notice: notice != null ? notice() : this.notice,
     lastProof: lastProof != null ? lastProof() : this.lastProof,
-    shuffles: shuffles ?? this.shuffles,
+    step: step ?? this.step,
     firstPaydayAt: firstPaydayAt != null ? firstPaydayAt() : this.firstPaydayAt,
   );
 
@@ -102,7 +117,7 @@ class PayrollFormState extends Equatable {
     progress,
     notice,
     lastProof,
-    shuffles,
+    step,
     firstPaydayAt,
   ];
 }
