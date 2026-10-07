@@ -20,9 +20,75 @@ export function isMobileBrowser() {
   return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)
 }
 
+const isAndroid = () => /Android/i.test(navigator.userAgent)
+const isIOS = () => /iPhone|iPad|iPod/i.test(navigator.userAgent)
+
+const FREIGHTER_PACKAGE = 'org.stellar.freighterwallet'
+export const FREIGHTER_STORES = {
+  ios: 'https://apps.apple.com/app/freighter/id6743947720',
+  android: `https://play.google.com/store/apps/details?id=${FREIGHTER_PACKAGE}`,
+}
+
+/** Where to get Freighter on this device: the App Store, Google Play, or freighter.app. */
+export function freighterStoreUrl() {
+  if (isIOS()) return FREIGHTER_STORES.ios
+  if (isAndroid()) return FREIGHTER_STORES.android
+  return 'https://www.freighter.app/'
+}
+
+export function freighterStoreName() {
+  if (isIOS()) return 'the App Store'
+  if (isAndroid()) return 'Google Play'
+  return 'freighter.app'
+}
+
+/**
+ * Freighter's registered WalletConnect link (its `mobile.native` entry in the
+ * WalletConnect registry). The app only pairs when the link contains it, so
+ * the generic `freighterwallet://wc?uri=` is ignored.
+ */
+const FREIGHTER_NATIVE_LINK = 'freighterwallet://wc-redirect'
+
 /** Opens Freighter Mobile, with a pairing link when one is given. */
 export function freighterDeepLink(pairingUri?: string) {
-  return pairingUri ? `freighterwallet://wc?uri=${encodeURIComponent(pairingUri)}` : 'freighterwallet://'
+  return pairingUri ? `${FREIGHTER_NATIVE_LINK}?uri=${encodeURIComponent(pairingUri)}` : 'freighterwallet://'
+}
+
+/**
+ * Opens the Freighter app on this phone. When it isn't installed, sends the
+ * person to the store instead: Android does this exactly through an intent
+ * fallback; on iOS the page never hands over to the app, so we follow up.
+ */
+export function openFreighter(pairingUri?: string, { storeFallback = true } = {}) {
+  if (isAndroid()) {
+    const path = pairingUri ? `wc-redirect?uri=${encodeURIComponent(pairingUri)}` : ''
+    const fallback = storeFallback ? `S.browser_fallback_url=${encodeURIComponent(FREIGHTER_STORES.android)};` : ''
+    window.location.href = `intent://${path}#Intent;scheme=freighterwallet;package=${FREIGHTER_PACKAGE};${fallback}end`
+    return
+  }
+  window.location.href = freighterDeepLink(pairingUri)
+  if (!storeFallback || !isIOS()) return
+  let left = false
+  const onHidden = () => { if (document.visibilityState === 'hidden') left = true }
+  const onPageHide = () => { left = true }
+  document.addEventListener('visibilitychange', onHidden)
+  window.addEventListener('pagehide', onPageHide)
+  const started = Date.now()
+  const check = window.setInterval(() => {
+    const done = () => {
+      window.clearInterval(check)
+      document.removeEventListener('visibilitychange', onHidden)
+      window.removeEventListener('pagehide', onPageHide)
+    }
+    if (left) return done()
+    // Still here, visible and not behind a system prompt: Freighter isn't installed.
+    if (Date.now() - started >= 2500 && document.visibilityState === 'visible' && document.hasFocus()) {
+      done()
+      window.location.href = FREIGHTER_STORES.ios
+    } else if (Date.now() - started > 10_000) {
+      done()
+    }
+  }, 500)
 }
 
 let clientPromise: Promise<SignClient> | null = null
@@ -115,6 +181,8 @@ export function mobileAccount(): WalletAccount {
 export async function signWithMobile(xdr: string) {
   const instance = await client()
   if (!session) throw new Error('The Freighter app is not connected. Pair it again.')
+  // Bring Freighter forward on a phone so the request is in front of the person.
+  if (isMobileBrowser()) openFreighter(undefined, { storeFallback: false })
   try {
     const result = await instance.request<{ signedXDR?: string }>({
       topic: session.topic,
