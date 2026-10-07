@@ -1,4 +1,6 @@
+import { useLayoutEffect } from 'react'
 import { PageFrame } from '../../app/Shell'
+import { usePayrollForm } from '../../state/payroll-form'
 import { useSchedules } from '../../state/schedules'
 import { useUp } from '../../ui/hooks'
 import { PayrollForm } from './PayrollForm'
@@ -7,6 +9,9 @@ import './payroll.css'
 
 export function EmployerPage() {
   const schedules = useSchedules()
+  const { startDraft } = usePayrollForm()
+  // Every visit opens a fresh draft with new sample values.
+  useLayoutEffect(() => { startDraft() }, []) // eslint-disable-line react-hooks/exhaustive-deps
   // Recent payrolls appear only once there is something to show.
   const hasHistory = schedules.schedules.length > 0 || schedules.notice !== null
   const twoColumns = useUp('lg') && hasHistory
