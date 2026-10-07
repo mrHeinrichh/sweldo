@@ -94,8 +94,10 @@ Tests run locally without sending transactions. The dev server uses ignored `.en
 ## Connect with Freighter Mobile
 
 **Connect wallet** offers both Freighters. The browser extension works as before. The Freighter app pairs
-over WalletConnect: on a computer Sweldo shows a QR code to scan from the app; on a phone it opens
-Freighter directly (`freighterwallet://`). Signatures then happen in the app; the action button reads
+over WalletConnect: on a computer Sweldo shows a QR code to scan from the app; on a phone it offers
+only the Freighter app and opens it directly through Freighter's registered link
+(`freighterwallet://wc-redirect`). If Freighter isn't installed, the phone goes to the App Store or
+Google Play instead. Signatures then happen in the app; the action button reads
 "Confirm in Freighter…" while one is waiting. A paired session survives reloads.
 
 Pairing needs `VITE_WALLETCONNECT_PROJECT_ID`; without it the option shows as not set up.
