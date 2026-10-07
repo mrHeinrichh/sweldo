@@ -1,8 +1,9 @@
 import { Networks } from '@stellar/stellar-sdk'
-import { connectExtension, extensionAccount, signWithExtension } from './freighter-extension'
+import { connectExtension, extensionAccount, restoreExtension, signWithExtension } from './freighter-extension'
 import {
   connectMobile,
   disconnectMobile,
+  isMobileBrowser,
   mobileAccount,
   onMobileDisconnect,
   restoreMobile,
@@ -12,7 +13,7 @@ import {
 import type { WalletAccount, WalletKind, WalletState } from './types'
 
 export type { WalletAccount, WalletKind, WalletState } from './types'
-export { FREIGHTER_MISSING } from './freighter-extension'
+export { FREIGHTER_MISSING, FreighterMissingError } from './freighter-extension'
 export { freighterDeepLink, isMobileBrowser, walletConnectProjectId } from './walletconnect'
 
 // One place that knows which Freighter is connected. Everything that signs
@@ -27,6 +28,8 @@ export function mobileAvailable() {
 }
 
 export async function connect(kind: WalletKind, options: { onPairingUri?: (uri: string) => void; signal?: AbortSignal } = {}): Promise<WalletState> {
+  const reason = unavailableReason(kind)
+  if (reason) throw new Error(reason)
   const account = kind === 'freighter-mobile'
     ? await connectMobile(options.onPairingUri ?? (() => {}), options.signal)
     : await connectExtension()
@@ -36,15 +39,35 @@ export async function connect(kind: WalletKind, options: { onPairingUri?: (uri: 
   return { ...account, kind }
 }
 
-/** Brings back a Freighter Mobile session from an earlier visit, silently. */
+/** Reconnects to the wallet used last time, without prompting. */
 export async function restore(): Promise<WalletState | null> {
   let last: string | null = null
   try { last = localStorage.getItem(LAST_WALLET_KEY) } catch { /* ignore */ }
-  if (last !== 'freighter-mobile') return null
-  const account = await restoreMobile().catch(() => null)
+  if (last !== 'freighter-mobile' && last !== 'freighter-extension') return null
+  if (!walletAvailable(last)) return null
+  const account = last === 'freighter-mobile'
+    ? await restoreMobile().catch(() => null)
+    : await restoreExtension()
   if (!account) return null
-  active = 'freighter-mobile'
-  return { ...account, kind: 'freighter-mobile' }
+  active = last
+  return { ...account, kind: last }
+}
+
+export const WALLET_KINDS: Record<WalletKind, { title: string; description: string }> = {
+  'freighter-extension': { title: 'Freighter extension', description: 'Sign in this browser with the Freighter extension.' },
+  'freighter-mobile': { title: 'Freighter app', description: 'Approve each payroll action in Freighter on your phone.' },
+}
+
+/** Why a wallet can't be used here, phrased as what to do about it. */
+export function unavailableReason(kind: WalletKind): string | null {
+  if (kind === 'freighter-extension') {
+    return isMobileBrowser() ? 'Browser extensions aren’t available on phones. Use the Freighter app.' : null
+  }
+  return mobileAvailable() ? null : 'Pairing with the Freighter app isn’t switched on for this version of Sweldo yet.'
+}
+
+export function walletAvailable(kind: WalletKind) {
+  return unavailableReason(kind) === null
 }
 
 export async function disconnect() {
@@ -63,25 +86,12 @@ export function onWalletDisconnected(listener: () => void) {
 /** The connected wallet's current account and network, re-read before sensitive signatures. */
 export async function currentAccount(): Promise<WalletAccount> {
   if (active === 'freighter-mobile') return mobileAccount()
-  return extensionAccount()
-}
-
-// "Approve in Freighter" prompts while a phone signature is pending.
-type ApprovalListener = (pending: boolean) => void
-const approvalListeners = new Set<ApprovalListener>()
-export function onPendingApproval(listener: ApprovalListener) {
-  approvalListeners.add(listener)
-  return () => approvalListeners.delete(listener)
+  if (active === 'freighter-extension') return extensionAccount()
+  throw new Error('Connect Freighter to continue.')
 }
 
 export async function signXdr(xdr: string, address: string, networkPassphrase: string = Networks.TESTNET) {
-  if (active === 'freighter-mobile') {
-    approvalListeners.forEach((listener) => listener(true))
-    try {
-      return await signWithMobile(xdr)
-    } finally {
-      approvalListeners.forEach((listener) => listener(false))
-    }
-  }
-  return signWithExtension(xdr, address, networkPassphrase)
+  if (active === 'freighter-mobile') return signWithMobile(xdr)
+  if (active === 'freighter-extension') return signWithExtension(xdr, address, networkPassphrase)
+  throw new Error('Connect Freighter to continue.')
 }

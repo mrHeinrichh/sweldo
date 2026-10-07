@@ -38,7 +38,7 @@ function client() {
       name: 'Sweldo',
       description: 'Payroll locked on Stellar. Claim pay on payday.',
       url: window.location.origin,
-      icons: [`${window.location.origin}/favicon.svg`],
+      icons: [`${window.location.origin}/icon-192.png`],
     },
   }).then((instance) => {
     const dropped = ({ topic }: { topic: string }) => {

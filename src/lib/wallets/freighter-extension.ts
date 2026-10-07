@@ -27,7 +27,13 @@ function wait(milliseconds: number) {
 }
 
 export const FREIGHTER_MISSING =
-  'Freighter is not available. Check chrome://extensions: enable Freighter, set Site access to "On all sites", unlock it, then reload this tab.'
+  'Freighter is not available. Install it from freighter.app, or open chrome://extensions, enable Freighter, set Site access to “On all sites”, unlock it, then reload this tab.'
+
+/** Raised when no Freighter extension could be reached at all. */
+export class FreighterMissingError extends Error {
+  readonly walletMissing = true
+  constructor() { super(FREIGHTER_MISSING) }
+}
 
 async function detectFreighter(): Promise<boolean> {
   // The extension injects its content script after page load, so a single early check can miss it.
@@ -53,7 +59,7 @@ export async function connectExtension(): Promise<WalletAccount> {
   try {
     accessResult = await withTimeout(requestAccess(), 30_000)
   } catch (error) {
-    if (!detected) throw new Error(FREIGHTER_MISSING)
+    if (!detected) throw new FreighterMissingError()
     throw error
   }
   const access = unwrap(accessResult, 'Could not connect Freighter')
@@ -78,15 +84,29 @@ export async function connectExtension(): Promise<WalletAccount> {
 
 /** The extension's active account and network, without prompting. */
 export async function extensionAccount(): Promise<WalletAccount> {
-  const network = unwrap(await withTimeout(getNetwork(), 5_000), 'Could not read Freighter network')
-  const access = unwrap(await withTimeout(requestAccess(), 30_000), 'Wallet access was rejected')
-  return { address: access.address, network: network.network, networkPassphrase: network.networkPassphrase }
+  const active = unwrap(await withTimeout(getAddress(), 5_000), 'Could not read the Freighter account')
+  if (!active.address) throw new Error('Freighter is locked. Unlock it and reconnect.')
+  const network = unwrap(await withTimeout(getNetwork(), 5_000), 'Could not read wallet network')
+  return { address: active.address, network: network.network, networkPassphrase: network.networkPassphrase }
+}
+
+/** Reconnects silently when this site is already on Freighter's allow list. */
+export async function restoreExtension(): Promise<WalletAccount | null> {
+  if (!(await detectFreighter())) return null
+  try {
+    const allowed = await withTimeout(isAllowed(), 3_000)
+    if (!allowed.isAllowed) return null
+    return await extensionAccount()
+  } catch {
+    return null
+  }
 }
 
 export async function signWithExtension(xdr: string, address: string, networkPassphrase: string) {
   const signed = unwrap(
-    await signTransaction(xdr, { address, networkPassphrase }),
+    await withTimeout(signTransaction(xdr, { address, networkPassphrase }), 5 * 60_000),
     'Freighter could not sign the transaction',
   )
+  if (!signed.signedTxXdr) throw new Error('Signing was cancelled. Nothing was submitted.')
   return signed.signedTxXdr
 }
