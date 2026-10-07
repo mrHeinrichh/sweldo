@@ -26,6 +26,8 @@ class RecipientRow extends StatefulWidget {
     required this.assetLabel,
     required this.removable,
     required this.animateIn,
+    this.teamChecks = 0,
+    this.focusOnCheck = false,
   });
 
   final PayrollRecipient recipient;
@@ -35,6 +37,14 @@ class RecipientRow extends StatefulWidget {
   final bool removable;
   final bool animateIn;
 
+  /// Times someone tried to continue with the team incomplete. Above 0, the
+  /// required fields show what's missing even if nobody touched them.
+  final int teamChecks;
+
+  /// This is the first employee with something missing: take focus when
+  /// [teamChecks] goes up.
+  final bool focusOnCheck;
+
   @override
   State<RecipientRow> createState() => _RecipientRowState();
 }
@@ -43,7 +53,21 @@ class _RecipientRowState extends State<RecipientRow> {
   late final _name = TextEditingController(text: widget.recipient.name);
   late final _address = TextEditingController(text: widget.recipient.employee);
   late final _total = TextEditingController(text: widget.recipient.total);
+  final _addressNode = FocusNode();
+  final _totalNode = FocusNode();
   bool _addressTouched = false;
+  bool _totalTouched = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _addressNode.addListener(() {
+      if (!_addressNode.hasFocus) setState(() => _addressTouched = true);
+    });
+    _totalNode.addListener(() {
+      if (!_totalNode.hasFocus) setState(() => _totalTouched = true);
+    });
+  }
 
   @override
   void didUpdateWidget(RecipientRow old) {
@@ -53,6 +77,22 @@ class _RecipientRowState extends State<RecipientRow> {
     _sync(_name, widget.recipient.name);
     _sync(_address, widget.recipient.employee);
     _sync(_total, widget.recipient.total);
+    if (widget.teamChecks != old.teamChecks && widget.focusOnCheck) {
+      // Point at the first thing to fix.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        final node = widget.recipient.hasValidAddress
+            ? _totalNode
+            : _addressNode;
+        node.requestFocus();
+        Scrollable.ensureVisible(
+          context,
+          alignment: 0.3,
+          duration: SwMotion.of(context, SwMotion.standard),
+          curve: SwMotion.move,
+        );
+      });
+    }
   }
 
   void _sync(TextEditingController controller, String value) {
@@ -68,6 +108,8 @@ class _RecipientRowState extends State<RecipientRow> {
     _name.dispose();
     _address.dispose();
     _total.dispose();
+    _addressNode.dispose();
+    _totalNode.dispose();
     super.dispose();
   }
 
@@ -86,10 +128,23 @@ class _RecipientRowState extends State<RecipientRow> {
   Widget build(BuildContext context) {
     final recipient = widget.recipient;
     final perPayout = Amount.perPayout(recipient.total, widget.payouts);
-    final showAddressError =
-        _addressTouched &&
-        recipient.employee.isNotEmpty &&
-        !recipient.hasValidAddress;
+    final checking = widget.teamChecks > 0;
+    // The wallet address is required: say so once the field is left empty or
+    // someone tries to continue without it.
+    final String? addressError =
+        recipient.hasValidAddress || !(_addressTouched || checking)
+        ? null
+        : recipient.employee.isEmpty
+        ? 'Add this person’s Stellar wallet address.'
+        : 'A Stellar public key has 56 characters and starts with G.';
+    final totalUnits = Amount.tryUnits(recipient.total) ?? BigInt.zero;
+    final String? totalError = !(_totalTouched || checking)
+        ? null
+        : totalUnits <= BigInt.zero
+        ? 'Enter the total pay.'
+        : (Amount.tryUnits(perPayout) ?? BigInt.zero) <= BigInt.zero
+        ? 'Too small to split into ${widget.payouts} payouts.'
+        : null;
     final twoColumns = context.up(Breakpoint.md);
 
     final nameField = _Field(
@@ -107,37 +162,33 @@ class _RecipientRowState extends State<RecipientRow> {
     );
     final addressField = _Field(
       label: 'Wallet address',
-      child: Focus(
-        onFocusChange: (focused) {
-          if (!focused) setState(() => _addressTouched = true);
-        },
-        child: TextField(
-          controller: _address,
-          style: SwType.mono.copyWith(color: SwColors.ink, fontSize: 14),
-          autocorrect: false,
-          enableSuggestions: false,
-          inputFormatters: [
-            FilteringTextInputFormatter.deny(RegExp(r'\s')),
-            UpperCaseTextFormatter(),
-          ],
-          decoration: InputDecoration(
-            hintText: 'G…',
-            prefixIcon: _FieldIcon(
-              recipient.hasValidAddress ? SwIcons.check : SwIcons.key,
-              color: recipient.hasValidAddress ? SwColors.payday : null,
-            ),
-            errorText: showAddressError
-                ? 'A Stellar public key has 56 characters and starts with G.'
-                : null,
+      hint: 'Required',
+      child: TextField(
+        controller: _address,
+        focusNode: _addressNode,
+        style: SwType.mono.copyWith(color: SwColors.ink, fontSize: 14),
+        autocorrect: false,
+        enableSuggestions: false,
+        inputFormatters: [
+          FilteringTextInputFormatter.deny(RegExp(r'\s')),
+          UpperCaseTextFormatter(),
+        ],
+        decoration: InputDecoration(
+          hintText: 'G…',
+          prefixIcon: _FieldIcon(
+            recipient.hasValidAddress ? SwIcons.check : SwIcons.key,
+            color: recipient.hasValidAddress ? SwColors.payday : null,
           ),
-          onChanged: (value) => _changed(employee: value),
+          errorText: addressError,
         ),
+        onChanged: (value) => _changed(employee: value),
       ),
     );
     final totalField = _Field(
       label: 'Total pay',
       child: TextField(
         controller: _total,
+        focusNode: _totalNode,
         keyboardType: const TextInputType.numberWithOptions(decimal: true),
         inputFormatters: [
           FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
@@ -156,6 +207,7 @@ class _RecipientRowState extends State<RecipientRow> {
             minWidth: 0,
             minHeight: 0,
           ),
+          errorText: totalError,
         ),
         onChanged: (value) => _changed(total: value),
       ),
@@ -265,14 +317,16 @@ class _RecipientRowState extends State<RecipientRow> {
           ],
           const SizedBox(height: SwSpace.md),
           if (twoColumns)
+            // Top-aligned so an error under the total doesn't push the split
+            // out of line; the split sits level with the middle of the field.
             Row(
-              crossAxisAlignment: CrossAxisAlignment.end,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Expanded(child: totalField),
                 const SizedBox(width: SwSpace.lg),
                 Expanded(
                   child: Padding(
-                    padding: const EdgeInsets.only(bottom: 14),
+                    padding: const EdgeInsets.only(top: 34),
                     child: split,
                   ),
                 ),
