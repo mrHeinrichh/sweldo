@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -12,6 +11,7 @@ import '../../../core/widgets/external_link.dart';
 import '../../../core/widgets/layout.dart';
 import '../../../core/widgets/sw_button.dart';
 import '../bloc/wallet_bloc.dart';
+import '../data/walletconnect/freighter_links.dart';
 import '../data/wallet_connector.dart';
 import '../data/wallet_repository.dart';
 import '../domain/wallet_session.dart';
@@ -117,12 +117,14 @@ class _WalletChoices extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Lead with the option that fits this device.
-    final ordered = [...connectors]
-      ..sort((a, b) {
-        int rank(WalletConnector c) => c.isAvailable ? 0 : 1;
-        return rank(a).compareTo(rank(b));
-      });
+    // Phones can only use the Freighter app; elsewhere, lead with what
+    // works on this device.
+    final ordered = FreighterLinks.onPhone
+        ? connectors.where((c) => c.kind == WalletKind.freighterMobile).toList()
+        : ([...connectors]..sort((a, b) {
+            int rank(WalletConnector c) => c.isAvailable ? 0 : 1;
+            return rank(a).compareTo(rank(b));
+          }));
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -150,8 +152,8 @@ class _WalletChoices extends StatelessWidget {
           children: [
             Text("Don't have Freighter? ", style: SwType.bodySmall),
             ExternalLink(
-              label: 'Get it at freighter.app',
-              uri: Uri.parse('https://www.freighter.app/'),
+              label: 'Get it on ${FreighterLinks.storeName}',
+              uri: FreighterLinks.store,
               style: SwType.bodySmall.copyWith(fontWeight: FontWeight.w600),
             ),
           ],
@@ -258,15 +260,11 @@ class _PairingView extends StatelessWidget {
 
   final Uri uri;
 
-  bool get _onPhone =>
-      defaultTargetPlatform == TargetPlatform.android ||
-      defaultTargetPlatform == TargetPlatform.iOS;
+  bool get _onPhone => FreighterLinks.onPhone;
 
   @override
   Widget build(BuildContext context) {
-    final link = Uri.parse(
-      'freighterwallet://wc?uri=${Uri.encodeComponent(uri.toString())}',
-    );
+    final link = FreighterLinks.pair(uri);
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -276,37 +274,41 @@ class _PairingView extends StatelessWidget {
         Text(
           _onPhone
               ? 'Freighter should open with a connection request. If it '
-                    "doesn't, open Freighter and scan this code from another "
-                    'screen, or copy the link.'
+                    "isn't installed, you'll go to ${FreighterLinks.storeName} "
+                    'to get it.'
               : 'Open Freighter on your phone, tap the scanner, and point it '
                     'at this code. Then approve the connection on Testnet.',
           style: SwType.bodySmall,
         ),
-        const SizedBox(height: SwSpace.xl),
-        Center(
-          child: Container(
-            padding: const EdgeInsets.all(SwSpace.md),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: const BorderRadius.all(SwRadius.panel),
-              border: Border.all(color: SwColors.rule),
-            ),
-            child: QrImageView(
-              data: uri.toString(),
-              size: 216,
-              padding: EdgeInsets.zero,
-              eyeStyle: const QrEyeStyle(
-                eyeShape: QrEyeShape.square,
-                color: SwColors.ink,
+        // On a phone the link opens Freighter directly; the code is for
+        // scanning from another device.
+        if (!_onPhone) ...[
+          const SizedBox(height: SwSpace.xl),
+          Center(
+            child: Container(
+              padding: const EdgeInsets.all(SwSpace.md),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: const BorderRadius.all(SwRadius.panel),
+                border: Border.all(color: SwColors.rule),
               ),
-              dataModuleStyle: const QrDataModuleStyle(
-                dataModuleShape: QrDataModuleShape.square,
-                color: SwColors.ink,
+              child: QrImageView(
+                data: uri.toString(),
+                size: 216,
+                padding: EdgeInsets.zero,
+                eyeStyle: const QrEyeStyle(
+                  eyeShape: QrEyeShape.square,
+                  color: SwColors.ink,
+                ),
+                dataModuleStyle: const QrDataModuleStyle(
+                  dataModuleShape: QrDataModuleShape.square,
+                  color: SwColors.ink,
+                ),
+                semanticsLabel: 'WalletConnect pairing code',
               ),
-              semanticsLabel: 'WalletConnect pairing code',
             ),
           ),
-        ),
+        ],
         const SizedBox(height: SwSpace.lg),
         const Row(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -342,7 +344,7 @@ class _PairingView extends StatelessWidget {
               SwButton(
                 label: 'Open Freighter',
                 icon: SwIcons.openApp,
-                onPressed: () => openExternal(link),
+                onPressed: () => FreighterLinks.open(link),
               ),
             SwButton(
               label: 'Back',
