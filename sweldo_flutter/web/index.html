@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <base href="$FLUTTER_BASE_HREF">
+
+  <meta charset="UTF-8">
+  <meta content="IE=Edge" http-equiv="X-UA-Compatible">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Sweldo locks a team's salaries on Stellar with one signature. Each person claims their pay the moment payday arrives.">
+  <meta name="theme-color" content="#F2F5F0">
+
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Sweldo">
+  <link rel="apple-touch-icon" href="icons/Icon-192.png">
+  <link rel="icon" type="image/png" href="favicon.png"/>
+
+  <title>Sweldo</title>
+  <link rel="manifest" href="manifest.json">
+
+  <style>
+    html, body { margin: 0; background: #F2F5F0; }
+  </style>
+
+  <!--
+    Freighter browser-extension bridge (@stellar/freighter-api 6.0.1, Apache-2.0).
+    Loaded before Flutter so the UMD wrapper attaches to window.freighterApi
+    instead of registering with a module loader.
+  -->
+  <script src="vendor/freighter-api-6.0.1.min.js"></script>
+</head>
+<body>
+  <script src="flutter_bootstrap.js" async></script>
+</body>
+</html>

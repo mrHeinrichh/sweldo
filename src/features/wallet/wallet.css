@@ -1,0 +1,65 @@
+.wallet-button-swap { display: inline-flex; animation: wallet-swap 280ms var(--ease-enter); }
+@keyframes wallet-swap { from { opacity: 0; transform: scale(.92); } }
+.wallet-menu-root { position: relative; }
+.wallet-chip {
+  display: inline-flex; align-items: center; gap: var(--s-sm); height: 44px; padding: 0 12px;
+  background: #fff; border: 1px solid var(--rule); border-radius: var(--r-field); color: var(--ink-muted); cursor: pointer;
+  transition: border-color 200ms ease-out, background-color 200ms ease-out;
+}
+.wallet-chip:hover { background: #F7F9F6; }
+.wallet-chip:focus-visible { outline: 2px solid var(--stamp); outline-offset: 4px; }
+.wallet-chip .t-mono { color: var(--ink); font-weight: 500; margin-right: -4px; }
+.wallet-chip-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--payday); }
+.wallet-chip.wrong { border-color: var(--caution); }
+.wallet-chip.wrong .wallet-chip-dot { background: var(--caution); }
+.wallet-menu {
+  position: absolute; right: 0; top: calc(100% + 4px); z-index: 40; min-width: 240px; padding: 8px 0;
+  background: var(--sheet); border: 1px solid var(--rule); border-radius: var(--r-panel);
+  box-shadow: 0 8px 20px rgba(20, 33, 58, .14);
+  animation: wallet-menu-in 180ms var(--ease-enter);
+  transform-origin: top right;
+}
+@keyframes wallet-menu-in { from { opacity: 0; transform: scale(.96) translateY(-4px); } }
+.wallet-menu button, .wallet-menu a {
+  display: flex; align-items: center; gap: var(--s-md); width: 100%; height: 48px; padding: 0 16px;
+  border: 0; background: none; color: var(--ink); font: 600 14px/1.3 var(--font); text-decoration: none; cursor: pointer; text-align: left;
+}
+.wallet-menu svg { color: var(--ink-muted); }
+.wallet-menu button:hover, .wallet-menu a:hover { background: rgba(20, 33, 58, .05); }
+
+/* Connect sheet */
+.connect-content { display: grid; }
+.connect-view { display: flex; flex-direction: column; animation: connect-view-in 280ms var(--ease-enter); }
+@keyframes connect-view-in { from { opacity: 0; transform: translateX(6%); } }
+.connect-lede { margin-top: var(--s-sm) !important; }
+.connect-options { display: grid; gap: var(--s-md); margin: var(--s-xl) 0 var(--s-sm); }
+.connect-option {
+  --glow: rgba(91, 60, 196, .16);
+  display: flex; align-items: center; gap: var(--s-lg); width: 100%; padding: var(--s-lg); text-align: left;
+  background: #fff; border: 1px solid var(--rule); border-radius: var(--r-panel); font: inherit; color: inherit;
+}
+.connect-option:disabled { cursor: default; }
+.connect-option:disabled:hover { transform: none; box-shadow: none; }
+.connect-option.unavailable > * { opacity: .55; }
+.connect-option:not(:disabled):hover, .connect-option.busy { border-color: var(--stamp); }
+.connect-option:not(:disabled):hover { background: var(--stamp-wash); }
+.connect-option-icon {
+  display: grid; place-items: center; width: 40px; height: 40px; flex: none;
+  border-radius: var(--r-field); background: var(--stamp-wash); color: var(--stamp);
+  transition: background-color 200ms ease-out, color 200ms ease-out;
+}
+.connect-option:not(:disabled):hover .connect-option-icon { background: var(--stamp); color: #fff; }
+.connect-option-text { flex: 1; display: grid; gap: 2px; min-width: 0; }
+.connect-option-spinner { color: var(--stamp); flex: none; }
+.connect-option-chevron { color: var(--ink-muted); flex: none; transition: transform 200ms ease-out, color 200ms ease-out; }
+.connect-option:not(:disabled):hover .connect-option-chevron { color: var(--stamp); transform: translateX(6px); }
+.connect-get { margin-top: var(--s-sm) !important; display: flex; align-items: center; flex-wrap: wrap; gap: 4px; }
+.connect-get-link { font-size: 14px; }
+.connect-qr {
+  align-self: center; width: 240px; height: 240px; margin-top: var(--s-xl); padding: var(--s-md);
+  background: #fff; border: 1px solid var(--rule); border-radius: var(--r-panel);
+}
+.connect-qr svg { display: block; width: 100%; height: 100%; }
+.connect-waiting { display: flex; align-items: center; justify-content: center; gap: var(--s-sm); margin-top: var(--s-lg) !important; }
+.connect-waiting svg { color: var(--stamp); }
+.connect-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--s-sm); margin-top: var(--s-xl); }

@@ -91,6 +91,51 @@ npm run week2:dev
 
 Tests run locally without sending transactions. The dev server uses ignored `.env.week2.local`. See [the Week 2 flowchart and demo guide](docs/week-2-claim-convert-demo.md) for Testnet preparation, browser steps, expected results, failure checks, and a recording script. The test command requires Node 22.18+.
 
+## Connect with Freighter Mobile
+
+**Connect wallet** offers both Freighters. The browser extension works as before. The Freighter app pairs
+over WalletConnect: on a computer Sweldo shows a QR code to scan from the app; on a phone it opens
+Freighter directly (`freighterwallet://`). Signatures then happen in the app; the action button reads
+"Confirm in Freighter…" while one is waiting. A paired session survives reloads.
+
+Pairing needs `VITE_WALLETCONNECT_PROJECT_ID`; without it the option shows as not set up.
+
+## Guide
+
+A highlighting guide walks through the app: it dims the page, spotlights one control at a time, and
+explains it, switching between the home, employer and pay pages as it goes. Highlighted controls stay
+usable (drag the payout track mid-tour). It opens on a first visit and any time from **Guide** in the
+top bar; → / ← move, Esc closes.
+
+## Smart pay schedule
+
+The payroll form reads as one sentence you edit: "Pay *every week*, *6 times*, starting
+*in 1 week*." Each highlighted part opens a menu, including "Pay until a date…" and "On a date…".
+A 50-slot payout track sets the count by drag, click or arrow keys and locks slots beyond the
+team's one-transaction limit. Presets (live demo, daily, weekly, monthly) fill everything at once,
+and live insights show the first and last payday, transaction capacity, and whether the connected
+wallet covers the total plus payout reserves. **Shuffle** fills the form with random sample values
+(wallet addresses are kept). Recent schedules stay hidden until there is one, then collapse.
+
+## One design, two clients
+
+The web app and the Flutter app (`sweldo_flutter/`) render the same screens: the same tokens and
+type scale, fonts (Archivo, IBM Plex Mono, Manrope for the wordmark), Lucide icons, copy, layout
+breakpoints (Tailwind's `sm`/`md`/`lg`/`xl`), motion and story film. They differ only in how they
+reach Freighter: the web uses the browser extension or a WalletConnect QR code for the Freighter
+app, while iOS and Android open the Freighter app directly.
+
+The React source mirrors the Flutter structure:
+
+| Web (`src/`) | Flutter (`sweldo_flutter/lib/`) |
+| --- | --- |
+| `styles/tokens.css` | `core/theme/` |
+| `ui/` (button, paper, stamp, motion, sheet, dialogs) | `core/widgets/`, `core/motion/` |
+| `app/` (shell, hash router) | `app/shell/`, `app/router/` |
+| `state/` (wallet, account, payroll form, schedules, payouts) | `features/*/bloc/` |
+| `features/home`, `payroll`, `payouts`, `conversion`, `story`, `tour`, `wallet` | `features/*/view/` |
+| `lib/` (Stellar, Freighter, claim-and-convert) | `features/*/data/`, `core/stellar/` |
+
 ## Configuration
 
 | Variable | Purpose |
@@ -98,12 +143,13 @@ Tests run locally without sending transactions. The dev server uses ignored `.en
 | `VITE_ASSET_CODE` | Issued asset code such as `USDC` |
 | `VITE_ASSET_ISSUER` | Issuer's Stellar public key |
 | `VITE_PHPT_ISSUER` | Controlled PHPT Testnet issuer; enables conversion for the configured USDC issuer |
+| `VITE_WALLETCONNECT_PROJECT_ID` | Turns on **Freighter Mobile**: a QR code to scan on desktop, a deep link on phones. Free at [dashboard.reown.com](https://dashboard.reown.com); add your site's domain there. |
 
 Both variables are required for issued-asset mode. If omitted, Sweldo uses native XLM. Employees must enable the issued asset before claiming.
 
 ## Architecture
 
-The app is fully client-side. React builds payout operations, Freighter signs them, and the signed transaction is submitted to Stellar Testnet through Horizon. The Soroban Payroll Registry contract stores schedule proof metadata for reviewer verification and future cross-device reconstruction. Schedule labels and the on-chain balance IDs needed for the current local cancellation controls are still stored in localStorage; private keys never enter the app.
+The app is fully client-side (React on the web, Flutter on phones). The client builds payout operations, Freighter signs them, and the signed transaction is submitted to Stellar Testnet through Horizon. The Soroban Payroll Registry contract stores schedule proof metadata for reviewer verification and future cross-device reconstruction. Schedule labels and the on-chain balance IDs needed for the current local cancellation controls are still stored in localStorage; private keys never enter the app.
 
 ## Safety and current scope
 

@@ -7,3 +7,6 @@ node_modules
 *.pdf
 *.inspect.ndjson
 sweldo-working.pptx
+
+# Flutter app (built and deployed separately)
+sweldo_flutter
