@@ -15,7 +15,8 @@ import '../../bloc/payroll_form/payroll_form_bloc.dart';
 import '../../domain/payroll_recipient.dart';
 
 /// One employee in the payroll form. Owns its text controllers, reports
-/// every edit to [PayrollFormBloc], and follows values rolled by Shuffle.
+/// every edit to [PayrollFormBloc], and follows values set elsewhere (a new
+/// draft).
 class RecipientRow extends StatefulWidget {
   const RecipientRow({
     super.key,
@@ -25,7 +26,6 @@ class RecipientRow extends StatefulWidget {
     required this.assetLabel,
     required this.removable,
     required this.animateIn,
-    required this.shuffles,
   });
 
   final PayrollRecipient recipient;
@@ -34,9 +34,6 @@ class RecipientRow extends StatefulWidget {
   final String assetLabel;
   final bool removable;
   final bool animateIn;
-
-  /// Shuffle count; a change flashes the row to show what rolled.
-  final int shuffles;
 
   @override
   State<RecipientRow> createState() => _RecipientRowState();
@@ -51,7 +48,7 @@ class _RecipientRowState extends State<RecipientRow> {
   @override
   void didUpdateWidget(RecipientRow old) {
     super.didUpdateWidget(old);
-    // Values can change from outside (Shuffle); keep the fields in step
+    // Values can change from outside (a new draft); keep the fields in step
     // without disturbing a field the person is typing in.
     _sync(_name, widget.recipient.name);
     _sync(_address, widget.recipient.employee);
@@ -290,26 +287,7 @@ class _RecipientRowState extends State<RecipientRow> {
       ),
     );
 
-    // Flash a violet wash over the row when Shuffle rolls new values.
-    Widget row = TweenAnimationBuilder<double>(
-      key: ValueKey(widget.shuffles),
-      tween: Tween(begin: 1, end: 0),
-      duration: SwMotion.of(context, const Duration(milliseconds: 900)),
-      curve: Curves.easeOut,
-      builder: (context, t, child) => DecoratedBox(
-        position: DecorationPosition.foreground,
-        decoration: BoxDecoration(
-          borderRadius: const BorderRadius.all(SwRadius.panel),
-          border: Border.all(
-            color: SwColors.stamp.withValues(alpha: 0.7 * t),
-            width: 1.5,
-          ),
-          color: SwColors.stampWash.withValues(alpha: 0.45 * t),
-        ),
-        child: child,
-      ),
-      child: card,
-    );
+    final Widget row = card;
 
     if (!widget.animateIn || SwMotion.reduced(context)) return row;
     return row
