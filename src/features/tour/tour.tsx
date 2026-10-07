@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { ArrowLeft, ArrowRight, Check, Compass, Pointer, X } from 'lucide-react'
 import { navigate, useLocation } from '../../app/router'
+import { usePayrollForm } from '../../state/payroll-form'
 import { Button } from '../../ui/Button'
 import { useReducedMotion, useWidth } from '../../ui/hooks'
 import { ensureVisible } from '../../ui/scroll'
@@ -95,6 +96,9 @@ function TourOverlay({ api, skip }: { api: TourApi; skip: () => void }) {
   const [ready, setReady] = useState(false)
   const cardRef = useRef<HTMLDivElement>(null)
   const [cardHeight, setCardHeight] = useState(230)
+  const form = usePayrollForm()
+  const formRef = useRef(form)
+  formRef.current = form
 
   // Show the step: open its page, wait for the target, scroll it into view.
   useEffect(() => {
@@ -111,6 +115,13 @@ function TourOverlay({ api, skip }: { api: TourApi; skip: () => void }) {
       for (let attempt = 0; attempt < 40; attempt += 1) {
         await new Promise((resolve) => window.setTimeout(resolve, 40))
         if (cancelled) return
+        // Open the payroll step that holds the target once the form is on screen
+        // (entering the page starts a new draft on step one).
+        const wanted = step.payrollStep
+        if (wanted !== undefined && document.querySelector('.payroll-form') && formRef.current.state.step !== wanted) {
+          formRef.current.goToStep(wanted)
+          continue
+        }
         element = document.querySelector(`[data-tour="${step.target}"]`)
         if (element) break
       }

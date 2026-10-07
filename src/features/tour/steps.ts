@@ -10,6 +10,8 @@ export type TourStep = {
   body: string
   /** Invites the person to use the highlighted control during the step. */
   tryIt?: string
+  /** Payroll wizard step to open first (0 team, 1 schedule, 2 review). */
+  payrollStep?: 0 | 1 | 2
 }
 
 export const SWELDO_TOUR: TourStep[] = [
@@ -39,19 +41,14 @@ export const SWELDO_TOUR: TourStep[] = [
   {
     route: '/employer',
     target: 'employees',
+    payrollStep: 0,
     title: 'Add your team',
-    body: 'Each card is one person: a name, their Stellar wallet address, and the total to pay them.',
-  },
-  {
-    route: '/employer',
-    target: 'shuffle',
-    title: 'Try it with sample values',
-    body: 'Shuffle fills in names, pay and a schedule so you can explore. Wallet addresses you typed stay put.',
-    tryIt: 'Press Shuffle and watch the form roll.',
+    body: 'Each card is one person: a name, their Stellar wallet address, and the total to pay them. Sample names and pay are filled in fresh each visit.',
   },
   {
     route: '/employer',
     target: 'schedule-sentence',
+    payrollStep: 1,
     title: 'Read the schedule as a sentence',
     body: 'Each highlighted part is a menu: how often, how many times, and when pay starts. “Pay until a date” counts the paydays for you.',
     tryIt: 'Open one of the highlighted parts.',
@@ -59,6 +56,7 @@ export const SWELDO_TOUR: TourStep[] = [
   {
     route: '/employer',
     target: 'payout-track',
+    payrollStep: 1,
     title: 'Drag to set the number of payouts',
     body: 'Each slot is one payout. Hatched slots are past what one Stellar transaction can hold for your team.',
     tryIt: 'Drag the handle left or right.',
@@ -66,18 +64,21 @@ export const SWELDO_TOUR: TourStep[] = [
   {
     route: '/employer',
     target: 'presets',
+    payrollStep: 1,
     title: 'Or start from a preset',
     body: 'A live demo, daily, weekly or monthly plan sets everything at once.',
   },
   {
     route: '/employer',
     target: 'insights',
+    payrollStep: 2,
     title: 'Check before you sign',
     body: 'Live notes on the first and last payday, the transaction limit, and whether your wallet covers the total plus reserves.',
   },
   {
     route: '/employer',
     target: 'lock',
+    payrollStep: 2,
     title: 'Lock it with one signature',
     body: 'Freighter shows the transaction. Once you approve, every payout is locked on Stellar. You can cancel future payouts until each payday.',
   },
