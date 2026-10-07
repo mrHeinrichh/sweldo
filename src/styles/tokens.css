@@ -1,0 +1,75 @@
+/* Sweldo design system — the same tokens as the Flutter app
+   (sweldo_flutter/lib/core/theme). Change both together. */
+
+@font-face { font-family: 'Archivo'; src: url('/fonts/Archivo-400.ttf') format('truetype'); font-weight: 400; font-display: swap; }
+@font-face { font-family: 'Archivo'; src: url('/fonts/Archivo-500.ttf') format('truetype'); font-weight: 500; font-display: swap; }
+@font-face { font-family: 'Archivo'; src: url('/fonts/Archivo-600.ttf') format('truetype'); font-weight: 600; font-display: swap; }
+@font-face { font-family: 'Archivo'; src: url('/fonts/Archivo-700.ttf') format('truetype'); font-weight: 700; font-display: swap; }
+@font-face { font-family: 'Archivo'; src: url('/fonts/Archivo-800.ttf') format('truetype'); font-weight: 800; font-display: swap; }
+@font-face { font-family: 'IBMPlexMono'; src: url('/fonts/IBMPlexMono-400.ttf') format('truetype'); font-weight: 400; font-display: swap; }
+@font-face { font-family: 'IBMPlexMono'; src: url('/fonts/IBMPlexMono-500.ttf') format('truetype'); font-weight: 500; font-display: swap; }
+@font-face { font-family: 'Manrope'; src: url('/fonts/Manrope-700.ttf') format('truetype'); font-weight: 700; font-display: swap; }
+@font-face { font-family: 'Manrope'; src: url('/fonts/Manrope-800.ttf') format('truetype'); font-weight: 800; font-display: swap; }
+
+:root {
+  /* Greenbar payroll paper, ballpoint ink, violet stamp-pad ink. */
+  --paper: #F2F5F0;
+  --greenbar: #E1EBDD;
+  --sheet: #FCFDFB;
+  --rule: #D2DBCF;
+  --ink: #14213A;
+  --ink-muted: #52607A;
+  --ink-faint: #7D8799;
+  --stamp: #5B3CC4;
+  --stamp-deep: #452C9E;
+  --stamp-wash: #EDE8FB;
+  --payday: #1C7449;
+  --payday-deep: #155C3A;
+  --payday-wash: #DCEFE2;
+  --locked: #66708A;
+  --danger: #B3261E;
+  --danger-wash: #FBE8E6;
+  --caution: #8F5207;
+  --caution-wash: #FCEFD9;
+
+  /* Brand mark */
+  --violet-light: #8069EE;
+  --violet-dark: #5C43CF;
+  --violet: #7157E8;
+  --wordmark: #1D1A26;
+
+  /* Spacing */
+  --s-xs: 4px; --s-sm: 8px; --s-md: 12px; --s-lg: 16px; --s-xl: 24px; --s-xxl: 32px; --s-xxxl: 48px; --s-huge: 64px;
+
+  /* Radius follows hierarchy */
+  --r-card: 6px; --r-field: 10px; --r-panel: 14px; --r-sheet: 22px;
+
+  /* Motion */
+  --quick: 160ms; --standard: 280ms; --deliberate: 480ms;
+  --ease-enter: cubic-bezier(.215, .61, .355, 1);
+  --ease-move: cubic-bezier(.645, .045, .355, 1);
+  --ease-out: cubic-bezier(.4, 0, .2, 1);
+
+  --font: 'Archivo', system-ui, sans-serif;
+  --mono: 'IBMPlexMono', ui-monospace, monospace;
+
+  color-scheme: light;
+}
+
+/* SwType: the same scale and weights as the Flutter app. */
+.t-display { font: 800 48px/1.02 var(--font); letter-spacing: -1.6px; color: var(--ink); }
+.t-headline { font: 800 36px/1.08 var(--font); letter-spacing: -1px; color: var(--ink); }
+.t-title { font: 700 21px/1.2 var(--font); letter-spacing: -.3px; color: var(--ink); }
+.t-subtitle { font: 700 16px/1.3 var(--font); color: var(--ink); }
+.t-body { font: 400 16px/1.5 var(--font); color: var(--ink); }
+.t-body-sm { font: 400 14px/1.45 var(--font); color: var(--ink-muted); }
+.t-label { font: 600 14px/1.3 var(--font); color: var(--ink); }
+.t-caption { font: 500 12px/1.35 var(--font); color: var(--ink-muted); }
+.t-amount { font: 800 24px/1.1 var(--font); letter-spacing: -.6px; color: var(--ink); font-variant-numeric: tabular-nums; }
+.t-amount-lg { font: 800 36px/1.05 var(--font); letter-spacing: -1px; color: var(--ink); font-variant-numeric: tabular-nums; }
+.t-figures { font: 600 14px/1.3 var(--font); color: var(--ink); font-variant-numeric: tabular-nums; }
+.t-mono { font: 400 13px/1.4 var(--mono); color: var(--ink-muted); }
+.t-ink { color: var(--ink); }
+.t-muted { color: var(--ink-muted); }
+.t-center { text-align: center; }
+.m0 { margin: 0; }
