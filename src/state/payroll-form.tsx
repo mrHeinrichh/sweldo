@@ -39,6 +39,8 @@ export type PayrollFormState = {
   lastProof: PayrollProof | null
   /** Wizard step: 0 team, 1 schedule, 2 review and lock. */
   step: PayrollStep
+  /** Times someone tried to leave the team step incomplete; above 0 shows field errors. */
+  teamChecks: number
 }
 
 export type PayrollStep = 0 | 1 | 2
@@ -64,7 +66,10 @@ type PayrollFormApi = {
   changeSchedule: (change: ScheduleChange) => void
   /** Every visit starts a fresh draft: new sample values, first step. */
   startDraft: () => void
+  /** Moves without checks (the guide uses this). */
   goToStep: (step: PayrollStep) => void
+  /** Moves forward only once every employee has a wallet address and pay. */
+  requestStep: (step: PayrollStep) => boolean
   problems: PayrollProblems
   dismissNotice: () => void
   submit: (session: WalletSession) => void
@@ -104,6 +109,7 @@ function initialState(): PayrollFormState {
     notice: null,
     lastProof: null,
     step: 0,
+    teamChecks: 0,
   })
 }
 
@@ -261,8 +267,20 @@ export function PayrollFormProvider({ children }: { children: ReactNode }) {
       })),
       startDraft: () => update((previous) => (previous.submitting
         ? previous
-        : { ...rolled(previous), step: 0, lastProof: null })),
+        : { ...rolled(previous), step: 0, lastProof: null, teamChecks: 0 })),
       goToStep: (step) => update((previous) => ({ ...previous, step })),
+      requestStep: (step) => {
+        const rows = stateRef.current.recipients
+        const incomplete = rows.some((row) => !hasValidAddress(row)
+          || (tryUnits(row.total) ?? 0n) <= 0n
+          || (tryUnits(perPayout(row.total, stateRef.current.payouts)) ?? 0n) <= 0n)
+        if (step > 0 && incomplete) {
+          update((previous) => ({ ...previous, step: 0, teamChecks: previous.teamChecks + 1 }))
+          return false
+        }
+        update((previous) => ({ ...previous, step }))
+        return true
+      },
       problems: {
         missingAddresses: state.recipients.filter((row) => !hasValidAddress(row)).length,
         invalidAmounts: state.recipients.filter((row) => (tryUnits(row.total) ?? 0n) <= 0n
