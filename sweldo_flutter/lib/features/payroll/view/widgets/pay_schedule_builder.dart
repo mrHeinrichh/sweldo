@@ -60,14 +60,62 @@ class PayScheduleBuilder extends StatelessWidget {
           const SizedBox(height: SwSpace.xl),
           TourTarget(
             id: 'payout-track',
-            child: _PayoutTrack(
-              key: trackKey,
-              payouts: state.payouts,
-              capacity: state.capacity,
-              paydays: state.paydays(now),
-              onChanged: (n) => context.read<PayrollFormBloc>().add(
-                ScheduleChanged(payouts: n),
-              ),
+            // − track +: the buttons sit level with the slots.
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.only(top: 49),
+                  child: _CountButton(
+                    icon: SwIcons.remove,
+                    tooltip: 'One fewer payout',
+                    // Read the count at tap time, so quick taps all count.
+                    onPressed: state.payouts > 1
+                        ? () {
+                            final bloc = context.read<PayrollFormBloc>();
+                            bloc.add(
+                              ScheduleChanged(
+                                payouts: math.max(1, bloc.state.payouts - 1),
+                              ),
+                            );
+                          }
+                        : null,
+                  ),
+                ),
+                const SizedBox(width: SwSpace.md),
+                Expanded(
+                  child: _PayoutTrack(
+                    key: trackKey,
+                    payouts: state.payouts,
+                    capacity: state.capacity,
+                    paydays: state.paydays(now),
+                    onChanged: (n) => context.read<PayrollFormBloc>().add(
+                      ScheduleChanged(payouts: n),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: SwSpace.md),
+                Padding(
+                  padding: const EdgeInsets.only(top: 49),
+                  child: _CountButton(
+                    icon: SwIcons.add,
+                    tooltip: 'One more payout',
+                    onPressed: state.payouts < state.capacity
+                        ? () {
+                            final bloc = context.read<PayrollFormBloc>();
+                            bloc.add(
+                              ScheduleChanged(
+                                payouts: math.min(
+                                  bloc.state.capacity,
+                                  bloc.state.payouts + 1,
+                                ),
+                              ),
+                            );
+                          }
+                        : null,
+                  ),
+                ),
+              ],
             ),
           ),
           const SizedBox(height: SwSpace.xl),
@@ -779,23 +827,39 @@ class _Presets extends StatelessWidget {
     if (context.up(Breakpoint.sm)) {
       return Wrap(spacing: SwSpace.sm, runSpacing: SwSpace.sm, children: chips);
     }
-    // overflow-x-auto on phones.
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      clipBehavior: Clip.none,
-      child: Row(
-        children: [
-          for (final chip in chips)
-            Padding(
-              padding: const EdgeInsets.only(right: SwSpace.sm),
-              child: chip,
+    // Phones get an even two-column grid that stays inside the card.
+    final cells = [
+      for (final preset in _presets) _presetChip(context, preset, fill: true),
+    ];
+    return Column(
+      children: [
+        for (var i = 0; i < cells.length; i += 2) ...[
+          if (i > 0) const SizedBox(height: SwSpace.sm),
+          IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Expanded(child: cells[i]),
+                const SizedBox(width: SwSpace.sm),
+                Expanded(
+                  child: i + 1 < cells.length
+                      ? cells[i + 1]
+                      : const SizedBox.shrink(),
+                ),
+              ],
             ),
+          ),
         ],
-      ),
+      ],
     );
   }
 
-  Widget _presetChip(BuildContext context, _Preset preset) {
+  /// A preset pill, or with [fill] an even grid cell for phones.
+  Widget _presetChip(
+    BuildContext context,
+    _Preset preset, {
+    bool fill = false,
+  }) {
     final payouts = math.min(preset.payouts, state.capacity);
     final selected =
         state.cadence == preset.cadence &&
@@ -814,13 +878,18 @@ class _Presets extends StatelessWidget {
       selected: selected,
       semanticLabel: 'Preset: ${preset.title}',
       shadowColor: SwColors.stamp,
-      radius: const BorderRadius.all(Radius.circular(999)),
+      radius: fill
+          ? const BorderRadius.all(SwRadius.field)
+          : const BorderRadius.all(Radius.circular(999)),
       builder: (context, interaction) => AnimatedContainer(
         duration: duration,
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        constraints: BoxConstraints(minHeight: fill ? 44 : 0),
+        padding: EdgeInsets.symmetric(horizontal: fill ? 10 : 12, vertical: 8),
         decoration: BoxDecoration(
           color: selected ? SwColors.ink : Colors.white,
-          borderRadius: const BorderRadius.all(Radius.circular(999)),
+          borderRadius: fill
+              ? const BorderRadius.all(SwRadius.field)
+              : const BorderRadius.all(Radius.circular(999)),
           border: Border.all(
             color: selected
                 ? SwColors.ink
@@ -830,7 +899,8 @@ class _Presets extends StatelessWidget {
           ),
         ),
         child: Row(
-          mainAxisSize: MainAxisSize.min,
+          mainAxisSize: fill ? MainAxisSize.max : MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(
               selected ? SwIcons.check : preset.icon,
@@ -838,11 +908,15 @@ class _Presets extends StatelessWidget {
               color: selected ? Colors.white : SwColors.stamp,
             ),
             const SizedBox(width: 6),
-            Text(
-              preset.title,
-              style: SwType.label.copyWith(
-                fontSize: 13,
-                color: selected ? Colors.white : SwColors.ink,
+            Flexible(
+              child: Text(
+                preset.title,
+                textAlign: TextAlign.center,
+                style: SwType.label.copyWith(
+                  fontSize: 13,
+                  height: fill ? 1.25 : null,
+                  color: selected ? Colors.white : SwColors.ink,
+                ),
               ),
             ),
           ],
@@ -1109,6 +1183,53 @@ class InsightChip extends StatelessWidget {
               ),
             ],
           ],
+        ),
+      ),
+    );
+  }
+}
+
+/// One fewer or one more payout, beside the track.
+class _CountButton extends StatelessWidget {
+  const _CountButton({
+    required this.icon,
+    required this.tooltip,
+    required this.onPressed,
+  });
+
+  final IconData icon;
+  final String tooltip;
+  final VoidCallback? onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final duration = SwMotion.of(context, SwMotion.quick);
+    return Interactive(
+      onTap: onPressed,
+      tooltip: tooltip,
+      lift: 0,
+      hoverShadow: false,
+      pressScale: 0.94,
+      radius: const BorderRadius.all(Radius.circular(20)),
+      builder: (context, state) => AnimatedOpacity(
+        duration: duration,
+        opacity: onPressed == null ? 0.4 : 1,
+        child: AnimatedContainer(
+          duration: duration,
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: state.active ? SwColors.stampWash : Colors.white,
+            border: Border.all(
+              color: state.active ? SwColors.stamp : SwColors.rule,
+            ),
+          ),
+          child: Icon(
+            icon,
+            size: 18,
+            color: state.active ? SwColors.stamp : SwColors.ink,
+          ),
         ),
       ),
     );
