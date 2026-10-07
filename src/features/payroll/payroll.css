@@ -20,7 +20,9 @@
   transition: transform 200ms ease-out;
 }
 .progress-step:active { transform: scale(.97); }
-.progress-step:focus-visible { outline: 2px solid var(--stamp); outline-offset: 4px; }
+/* Keyboard focus rings the circle, not the whole column. */
+.progress-step:focus-visible { outline: none; }
+.progress-step:focus-visible .progress-circle { outline: 2px solid var(--stamp); outline-offset: 3px; }
 .progress-circle {
   display: grid; place-items: center; width: var(--circle); height: var(--circle); flex: none; border-radius: 50%;
   background: #fff; border: 1.5px solid var(--rule); color: var(--ink-faint);
@@ -76,8 +78,10 @@
 .recipient-remove:hover { background: var(--danger-wash); color: var(--danger); }
 .recipient-remove:active { transform: scale(.97); }
 .recipient-grid-top { display: grid; grid-template-columns: 4fr 7fr; gap: var(--s-md); align-items: start; }
-.recipient-grid-bottom { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s-lg); align-items: end; }
-.recipient-grid-bottom > .recipient-split { padding-bottom: 14px; }
+/* Top-aligned so an error under the total doesn't push the split out of line;
+   the split sits level with the middle of the total field. */
+.recipient-grid-bottom { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s-lg); align-items: start; }
+.recipient-grid-bottom > .recipient-split { padding-top: 34px; }
 .recipient-stack { display: flex; flex-direction: column; gap: var(--s-md); }
 .recipient-stack.tight { gap: var(--s-sm); }
 .recipient-split { display: flex; align-items: center; gap: 6px; color: var(--ink-muted); min-width: 0; }
@@ -152,7 +156,18 @@
 .token-item-check { color: var(--payday); flex: none; }
 
 /* Payout track */
-.track { position: relative; height: 118px; margin-top: var(--s-xl); cursor: grab; touch-action: pan-y; user-select: none; outline: none; }
+/* − track +: the buttons sit level with the slots (track top 52 + 34/2 − 20). */
+.track-row { display: grid; grid-template-columns: 40px minmax(0, 1fr) 40px; column-gap: var(--s-md); margin-top: var(--s-xl); }
+.track-step {
+  display: grid; place-items: center; width: 40px; height: 40px; margin-top: 49px; padding: 0;
+  border: 1px solid var(--rule); border-radius: 50%; background: #fff; color: var(--ink);
+  transition: background-color 160ms ease-out, border-color 160ms ease-out, color 160ms ease-out, transform 160ms ease-out;
+}
+.track-step:hover:not(:disabled) { background: var(--stamp-wash); border-color: var(--stamp); color: var(--stamp); }
+.track-step:active:not(:disabled) { transform: scale(.94); }
+.track-step:disabled { opacity: .4; cursor: default; }
+.track-step:focus-visible { outline: 2px solid var(--stamp); outline-offset: 3px; }
+.track { position: relative; height: 118px; cursor: grab; touch-action: pan-y; user-select: none; outline: none; }
 .track.dragging { cursor: grabbing; }
 .track-bubble { position: absolute; top: 0; transition: left 220ms var(--ease-enter); }
 .track.dragging .track-bubble { transition: none; }
@@ -185,9 +200,8 @@
 /* Presets */
 .presets-wrap { margin-top: var(--s-xl); }
 .presets.wrap { display: flex; flex-wrap: wrap; gap: var(--s-sm); }
-/* Like Flutter's unclipped scroller, chips run out to the screen edge. */
-.presets.scroll { display: flex; gap: var(--s-sm); overflow-x: auto; scrollbar-width: none; margin: -2px -33px -2px -2px; padding: 2px 33px 2px 2px; }
-.presets.scroll::-webkit-scrollbar { display: none; }
+.presets.grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s-sm); }
+.presets.grid .preset { justify-content: center; min-height: 44px; padding: 8px 10px; border-radius: var(--r-field); white-space: normal; text-align: center; line-height: 1.25; }
 .preset {
   --glow: rgba(91, 60, 196, .16);
   display: inline-flex; align-items: center; gap: 6px; padding: 8px 12px; flex: none; white-space: nowrap;
