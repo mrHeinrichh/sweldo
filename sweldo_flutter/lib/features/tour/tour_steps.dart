@@ -37,23 +37,17 @@ const sweldoTour = [
   TourStep(
     route: '/employer',
     target: 'employees',
+    payrollStep: 0,
     title: 'Add your team',
     body:
         'Each card is one person: a name, their Stellar wallet address, '
-        'and the total to pay them.',
-  ),
-  TourStep(
-    route: '/employer',
-    target: 'shuffle',
-    title: 'Try it with sample values',
-    body:
-        'Shuffle fills in names, pay and a schedule so you can explore. '
-        'Wallet addresses you typed stay put.',
-    tryIt: 'Press Shuffle and watch the form roll.',
+        'and the total to pay them. Sample names and pay are filled in fresh '
+        'each visit.',
   ),
   TourStep(
     route: '/employer',
     target: 'schedule-sentence',
+    payrollStep: 1,
     title: 'Read the schedule as a sentence',
     body:
         'Each highlighted part is a menu: how often, how many times, and '
@@ -63,6 +57,7 @@ const sweldoTour = [
   TourStep(
     route: '/employer',
     target: 'payout-track',
+    payrollStep: 1,
     title: 'Drag to set the number of payouts',
     body:
         'Each slot is one payout. Hatched slots are past what one Stellar '
@@ -72,12 +67,14 @@ const sweldoTour = [
   TourStep(
     route: '/employer',
     target: 'presets',
+    payrollStep: 1,
     title: 'Or start from a preset',
     body: 'A live demo, daily, weekly or monthly plan sets everything at once.',
   ),
   TourStep(
     route: '/employer',
     target: 'insights',
+    payrollStep: 2,
     title: 'Check before you sign',
     body:
         'Live notes on the first and last payday, the transaction limit, '
@@ -86,6 +83,7 @@ const sweldoTour = [
   TourStep(
     route: '/employer',
     target: 'lock',
+    payrollStep: 2,
     title: 'Lock it with one signature',
     body:
         'Freighter shows the transaction. Once you approve, every payout is '
