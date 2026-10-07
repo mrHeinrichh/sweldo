@@ -5,9 +5,9 @@ import { hasValidAddress, usePayrollForm, type PayrollRecipient } from '../../st
 import { plural } from '../../ui/format'
 import { useUp } from '../../ui/hooks'
 
-/** One employee in the payroll form; follows values rolled by Shuffle. */
-export function RecipientRow({ recipient, index, assetLabel, removable, animateIn, shuffles, disabled }: {
-  recipient: PayrollRecipient; index: number; assetLabel: string; removable: boolean; animateIn: boolean; shuffles: number; disabled?: boolean
+/** One employee in the payroll form. */
+export function RecipientRow({ recipient, index, assetLabel, removable, animateIn, disabled }: {
+  recipient: PayrollRecipient; index: number; assetLabel: string; removable: boolean; animateIn: boolean; disabled?: boolean
 }) {
   const form = usePayrollForm()
   const payouts = form.state.payouts
@@ -93,8 +93,6 @@ export function RecipientRow({ recipient, index, assetLabel, removable, animateI
       {twoColumns
         ? <div className="recipient-grid-bottom">{totalField}{split}</div>
         : <div className="recipient-stack tight">{totalField}{split}</div>}
-      {/* Flash a violet wash over the row when Shuffle rolls new values. */}
-      <span key={shuffles} className="recipient-flash" aria-hidden />
     </div>
   )
 }

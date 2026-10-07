@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
@@ -10,6 +11,7 @@ import '../../core/theme/sw_icons.dart';
 import '../../core/theme/tokens.dart';
 import '../../core/theme/typography.dart';
 import '../../core/widgets/sw_button.dart';
+import '../payroll/bloc/payroll_form/payroll_form_bloc.dart';
 import 'tour_controller.dart';
 
 /// The highlighting guide. Dims the app except for a hole around the current
@@ -83,6 +85,16 @@ class _TourOverlayState extends State<TourOverlay>
     for (var i = 0; i < 40; i++) {
       await Future<void>.delayed(const Duration(milliseconds: 40));
       if (!mounted || attempt != _attempt) return;
+      // Open the payroll step that holds the target once the employer page
+      // is up (entering it starts a new draft on step one).
+      final wanted = step.payrollStep;
+      if (wanted != null && widget.currentPath == '/employer') {
+        final form = context.read<PayrollFormBloc>();
+        if (form.state.step != wanted) {
+          form.add(PayrollStepChanged(wanted));
+          continue;
+        }
+      }
       target = controller.keyFor(step.target!)?.currentContext;
       if (target != null) break;
     }
@@ -455,7 +467,9 @@ class _TourCard extends StatelessWidget {
                       const SizedBox(width: SwSpace.sm),
                       SwButton(
                         label: controller.isLast ? 'Done' : 'Next',
-                        icon: controller.isLast ? SwIcons.check : SwIcons.forward,
+                        icon: controller.isLast
+                            ? SwIcons.check
+                            : SwIcons.forward,
                         onPressed: controller.next,
                       ),
                     ],

@@ -20,23 +20,27 @@ const DAY = 86_400_000
 
 /**
  * The schedule as one smart, editable unit: a sentence whose parts are
- * controls, a track of payouts to drag, presets, and live insights that
- * check the plan against the calendar, the transaction limit and the wallet.
+ * controls, a track of payouts to drag, and presets. The checks that
+ * follow from it live on the review step (`ScheduleInsights`).
  */
 export function PayScheduleBuilder() {
   const form = usePayrollForm()
   const now = useNow()
   return (
     <div className="schedule-builder">
-      <div className="form-subheading"><CalendarClock size={18} /><span className="t-subtitle">Pay schedule</span></div>
-      <div data-tour="schedule-sentence" className="schedule-sentence-wrap"><ScheduleSentence now={now} /></div>
+      <div data-tour="schedule-sentence"><ScheduleSentence now={now} /></div>
       <div data-tour="payout-track">
         <PayoutTrack payouts={form.state.payouts} capacity={form.capacity} paydays={form.paydays(now)} onChange={(payouts) => form.changeSchedule({ payouts })} />
       </div>
       <div data-tour="presets" className="presets-wrap"><Presets /></div>
-      <div data-tour="insights"><Insights now={now} /></div>
     </div>
   )
+}
+
+/** Live checks of the plan against the calendar, the transaction limit and the wallet. */
+export function ScheduleInsights({ children }: { children?: ReactNode }) {
+  const now = useNow()
+  return <div data-tour="insights"><Insights now={now}>{children}</Insights></div>
 }
 
 // ---------------------------------------------------------------------------
@@ -326,9 +330,9 @@ function Presets() {
 // ---------------------------------------------------------------------------
 // Insights: what the plan means, checked against reality.
 
-type Tone = 'neutral' | 'good' | 'caution' | 'danger'
+export type Tone = 'neutral' | 'good' | 'caution' | 'danger'
 
-function Insights({ now }: { now: Date }) {
+function Insights({ now, children }: { now: Date; children?: ReactNode }) {
   const form = usePayrollForm()
   const { state } = form
   const { session } = useWallet()
@@ -358,6 +362,7 @@ function Insights({ now }: { now: Date }) {
 
   return (
     <div className="insights">
+      {children}
       <InsightChip icon={CalendarClock} tone="neutral" text={cadence === 'minute' ? `First payday ${formatTime(first)}` : `First payday ${formatDateTime(first)}`} />
       <InsightChip
         icon={Hourglass}
@@ -374,7 +379,7 @@ function Insights({ now }: { now: Date }) {
   )
 }
 
-function InsightChip({ icon: Icon, tone, text, actionLabel, onAction }: { icon: LucideIcon; tone: Tone; text: string; actionLabel?: string; onAction?: () => void }) {
+export function InsightChip({ icon: Icon, tone, text, actionLabel, onAction }: { icon: LucideIcon; tone: Tone; text: string; actionLabel?: string; onAction?: () => void }) {
   return (
     <span key={text} className={`insight tone-${tone}`}>
       <Icon size={15} />

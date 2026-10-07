@@ -18,12 +18,16 @@ class PageFrame extends StatelessWidget {
     this.title,
     this.description,
     this.onRefresh,
+    this.bottomBar,
   });
 
   final String? title;
   final String? description;
   final Widget child;
   final Future<void> Function()? onRefresh;
+
+  /// Actions pinned below the scrolling page, above the bottom navigation.
+  final Widget? bottomBar;
 
   @override
   Widget build(BuildContext context) {
@@ -72,8 +76,16 @@ class PageFrame extends StatelessWidget {
         ),
       ],
     );
-    if (onRefresh == null) return scroll;
-    return RefreshIndicator(onRefresh: onRefresh!, child: scroll);
+    final Widget page = onRefresh == null
+        ? scroll
+        : RefreshIndicator(onRefresh: onRefresh!, child: scroll);
+    if (bottomBar == null) return page;
+    return Column(
+      children: [
+        Expanded(child: page),
+        bottomBar!,
+      ],
+    );
   }
 }
 

@@ -71,19 +71,22 @@ void main() {
     final perPayout = int.parse(state.amountPerPayout(state.recipients.single.total));
     expect(perPayout, inInclusiveRange(20, 250));
     expect(perPayout % 10, 0);
-    expect(state.shuffles, 1);
+    expect(state.step, 0);
   });
 
   blocTest<PayrollFormBloc, PayrollFormState>(
-    'Shuffle rolls names, pay and schedule but keeps wallet addresses',
+    'a new draft rolls names, pay and schedule, keeps wallet addresses, '
+    'and returns to the first step',
     build: build,
     act: (bloc) => bloc
       ..add(const RecipientAdded())
       ..add(RecipientChanged('id0', employee: ana))
-      ..add(const PayrollRandomized()),
+      ..add(const PayrollStepChanged(2))
+      ..add(const PayrollDraftStarted()),
     verify: (bloc) {
       final state = bloc.state;
-      expect(state.shuffles, 2);
+      expect(state.step, 0);
+      expect(state.lastProof, isNull);
       expect(state.recipients.first.employee, ana);
       expect(state.recipients.map((r) => r.name).toSet(), hasLength(2));
       for (final r in state.recipients) {
@@ -92,6 +95,25 @@ void main() {
       expect(state.balanceCount <= 100, isTrue);
     },
   );
+
+  blocTest<PayrollFormBloc, PayrollFormState>(
+    'the wizard stays within its three steps',
+    build: build,
+    act: (bloc) => bloc
+      ..add(const PayrollStepChanged(5))
+      ..add(const PayrollStepChanged(-1)),
+    expect: () => [
+      isA<PayrollFormState>().having((s) => s.step, 'step', 2),
+      isA<PayrollFormState>().having((s) => s.step, 'step', 0),
+    ],
+  );
+
+  test('lists what blocks locking', () {
+    final state = build().state;
+    expect(state.missingAddresses, 1);
+    expect(state.invalidAmounts, 0);
+    expect(state.blocked, isTrue);
+  });
 
   test('the sampler never exceeds one transaction', () {
     final sampler = PayrollSampler(Random(1));

@@ -37,8 +37,15 @@ export type PayrollFormState = {
   progress: string | null
   notice: NoticeData | null
   lastProof: PayrollProof | null
-  shuffles: number
+  /** Wizard step: 0 team, 1 schedule, 2 review and lock. */
+  step: PayrollStep
 }
+
+export type PayrollStep = 0 | 1 | 2
+export const PAYROLL_STEPS = 3
+
+/** What still blocks locking, checked without a wallet. */
+export type PayrollProblems = { missingAddresses: number; invalidAmounts: number; overLimit: boolean }
 
 export type ScheduleChange = { cadence?: Cadence; payouts?: number; firstPaydayIn?: number; firstPaydayAt?: Date | null }
 
@@ -55,7 +62,10 @@ type PayrollFormApi = {
   removeRecipient: (id: string) => void
   changeRecipient: (id: string, change: Partial<Omit<PayrollRecipient, 'id'>>) => void
   changeSchedule: (change: ScheduleChange) => void
-  randomize: () => void
+  /** Every visit starts a fresh draft: new sample values, first step. */
+  startDraft: () => void
+  goToStep: (step: PayrollStep) => void
+  problems: PayrollProblems
   dismissNotice: () => void
   submit: (session: WalletSession) => void
 }
@@ -64,7 +74,10 @@ const newId = () => crypto.randomUUID()
 export const hasValidAddress = (recipient: PayrollRecipient) =>
   recipient.employee.length === 56 && StrKey.isValidEd25519PublicKey(recipient.employee)
 
-/** New sample values for every field except the wallet addresses people typed. */
+/**
+ * New sample values for every field except the wallet addresses people typed:
+ * locking pay to invented keys would strand it after payday.
+ */
 function rolled(from: PayrollFormState): PayrollFormState {
   const sample = rollSample(from.recipients.length)
   return {
@@ -74,7 +87,6 @@ function rolled(from: PayrollFormState): PayrollFormState {
     cadence: sample.cadence,
     firstPaydayIn: sample.firstDelay,
     firstPaydayAt: null,
-    shuffles: from.shuffles + 1,
     notice: null,
   }
 }
@@ -91,7 +103,7 @@ function initialState(): PayrollFormState {
     progress: null,
     notice: null,
     lastProof: null,
-    shuffles: 0,
+    step: 0,
   })
 }
 
@@ -247,7 +259,16 @@ export function PayrollFormProvider({ children }: { children: ReactNode }) {
         // Choosing "in N intervals" replaces a picked date unless a new date comes with it.
         firstPaydayAt: change.firstPaydayAt !== undefined ? change.firstPaydayAt : change.firstPaydayIn !== undefined ? null : previous.firstPaydayAt,
       })),
-      randomize: () => update(rolled),
+      startDraft: () => update((previous) => (previous.submitting
+        ? previous
+        : { ...rolled(previous), step: 0, lastProof: null })),
+      goToStep: (step) => update((previous) => ({ ...previous, step })),
+      problems: {
+        missingAddresses: state.recipients.filter((row) => !hasValidAddress(row)).length,
+        invalidAmounts: state.recipients.filter((row) => (tryUnits(row.total) ?? 0n) <= 0n
+          || (tryUnits(perPayout(row.total, state.payouts)) ?? 0n) <= 0n).length,
+        overLimit: balanceCount > MAX_OPERATIONS,
+      },
       dismissNotice: () => update((previous) => ({ ...previous, notice: null })),
       submit: (session) => { void submit(session) },
     }

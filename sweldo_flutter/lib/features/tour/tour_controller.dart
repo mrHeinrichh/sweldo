@@ -10,6 +10,7 @@ class TourStep {
     this.target,
     this.route,
     this.tryIt,
+    this.payrollStep,
   });
 
   /// Id of the [TourTarget] to spotlight; null shows a centred card.
@@ -22,6 +23,9 @@ class TourStep {
 
   /// Invites the person to use the highlighted control during the step.
   final String? tryIt;
+
+  /// Payroll wizard step to open first (0 team, 1 schedule, 2 review).
+  final int? payrollStep;
 }
 
 /// The guide's position and the widgets it can point at.

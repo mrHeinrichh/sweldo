@@ -60,6 +60,8 @@ export function Shell({ children }: { children: ReactNode }) {
       <main className="shell-main" ref={scroller}>
         <div className="page-transition" key={path}>{children}</div>
       </main>
+      {/* Pages can pin actions here, above the bottom navigation, on phones. */}
+      <div id="page-bar" className="page-bar-slot" />
       {!wide && <BottomNav currentPath={current.path} />}
       <ConnectWalletSheet />
     </div>

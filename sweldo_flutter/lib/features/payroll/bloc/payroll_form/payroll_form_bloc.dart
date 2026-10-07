@@ -113,7 +113,14 @@ class PayrollFormBloc extends Bloc<PayrollFormEvent, PayrollFormState> {
     on<PayrollNoticeDismissed>(
       (event, emit) => emit(state.copyWith(notice: () => null)),
     );
-    on<PayrollRandomized>((event, emit) => emit(_rolled(_sampler, state)));
+    on<PayrollDraftStarted>((event, emit) {
+      // A payroll being signed keeps its draft.
+      if (state.submitting) return;
+      emit(_rolled(_sampler, state).copyWith(step: 0, lastProof: () => null));
+    });
+    on<PayrollStepChanged>(
+      (event, emit) => emit(state.copyWith(step: event.step.clamp(0, 2))),
+    );
   }
 
   final PayrollSampler _sampler;
@@ -136,7 +143,6 @@ class PayrollFormBloc extends Bloc<PayrollFormEvent, PayrollFormState> {
       cadence: sampler.cadence(),
       firstPaydayIn: sampler.firstPaydayIn(),
       firstPaydayAt: () => null,
-      shuffles: from.shuffles + 1,
       notice: () => null,
     );
   }

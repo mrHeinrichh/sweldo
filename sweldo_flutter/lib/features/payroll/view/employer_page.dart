@@ -6,12 +6,26 @@ import '../../../app/shell/page_frame.dart';
 import '../../../core/responsive/breakpoints.dart';
 import '../../../core/theme/motion.dart';
 import '../../../core/theme/tokens.dart';
+import '../../../core/widgets/layout.dart';
+import '../bloc/payroll_form/payroll_form_bloc.dart';
 import '../bloc/schedules/schedules_bloc.dart';
 import 'widgets/payroll_form.dart';
 import 'widgets/schedule_list.dart';
 
-class EmployerPage extends StatelessWidget {
+class EmployerPage extends StatefulWidget {
   const EmployerPage({super.key});
+
+  @override
+  State<EmployerPage> createState() => _EmployerPageState();
+}
+
+class _EmployerPageState extends State<EmployerPage> {
+  @override
+  void initState() {
+    super.initState();
+    // Every visit opens a fresh draft with new sample values.
+    context.read<PayrollFormBloc>().add(const PayrollDraftStarted());
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -51,6 +65,8 @@ class EmployerPage extends StatelessWidget {
     }
 
     return PageFrame(
+      // On phones the wizard's Back and Continue stay pinned in reach.
+      bottomBar: isWide(context) ? null : const PayrollActions(pinned: true),
       title: 'Pay your team',
       description:
           'Lock a payroll schedule once. Each payout unlocks on its payday '

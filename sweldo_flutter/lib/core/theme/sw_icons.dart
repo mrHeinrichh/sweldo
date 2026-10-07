@@ -49,7 +49,6 @@ abstract final class SwIcons {
   static const IconData undo = LucideIcons.undo2;
   static const IconData external = LucideIcons.arrowUpRight;
   static const IconData openApp = LucideIcons.squareArrowOutUpRight;
-  static const IconData shuffle = LucideIcons.dices;
   static const IconData logout = LucideIcons.logOut;
   static const IconData play = LucideIcons.play;
   static const IconData pause = LucideIcons.pause;

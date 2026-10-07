@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
 import '../../../../core/motion/interactive.dart';
@@ -13,8 +15,8 @@ import '../../bloc/payroll_form/payroll_form_bloc.dart';
 
 enum _StepStatus { todo, current, done }
 
-/// Where the employer is in the payroll: team, schedule, lock. Each step
-/// updates live as the form fills and jumps to its section when tapped.
+/// The wizard's steps: team, schedule, lock. Each updates live as the form
+/// fills and opens its step when tapped.
 class PayrollProgress extends StatelessWidget {
   const PayrollProgress({
     super.key,
@@ -68,44 +70,58 @@ class PayrollProgress extends StatelessWidget {
       ),
     ];
 
-    final statuses = <_StepStatus>[];
-    var foundCurrent = false;
-    for (final step in steps) {
-      if (step.done) {
-        statuses.add(_StepStatus.done);
-      } else if (!foundCurrent) {
-        statuses.add(_StepStatus.current);
-        foundCurrent = true;
-      } else {
-        statuses.add(_StepStatus.todo);
-      }
-    }
+    // The step you're on is current; others show whether they're complete.
+    final statuses = [
+      for (var i = 0; i < steps.length; i++)
+        if (i == state.step && (!steps[i].done || i < 2))
+          _StepStatus.current
+        else if (steps[i].done)
+          _StepStatus.done
+        else
+          _StepStatus.todo,
+    ];
 
     final compact = !context.up(Breakpoint.sm);
+    final circle = compact ? 36.0 : 40.0;
+    const gap = SwSpace.sm;
+    // Circles sit centred over their labels in equal columns; the line to the
+    // next step runs circle to circle with the same gap at each end.
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        for (var i = 0; i < steps.length; i++) ...[
+        for (var i = 0; i < steps.length; i++)
           Expanded(
-            child: _Step(
-              number: i + 1,
-              icon: steps[i].icon,
-              title: steps[i].title,
-              detail: steps[i].detail,
-              status: statuses[i],
-              compact: compact,
-              onTap: () => onSelect(i),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final width = constraints.maxWidth;
+                return Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    _Step(
+                      number: i + 1,
+                      icon: steps[i].icon,
+                      title: steps[i].title,
+                      detail: steps[i].detail,
+                      status: statuses[i],
+                      circle: circle,
+                      onTap: () => onSelect(i),
+                    ),
+                    if (i < steps.length - 1)
+                      Positioned(
+                        left: width / 2 + circle / 2 + gap,
+                        top: circle / 2 - 1,
+                        width: math.max(0, width - circle - 2 * gap),
+                        child: IgnorePointer(
+                          child: _Connector(
+                            filled: statuses[i] == _StepStatus.done,
+                          ),
+                        ),
+                      ),
+                  ],
+                );
+              },
             ),
           ),
-          if (i < steps.length - 1)
-            Padding(
-              padding: EdgeInsets.only(top: compact ? 17 : 19),
-              child: SizedBox(
-                width: compact ? 16 : 28,
-                child: _Connector(filled: statuses[i] == _StepStatus.done),
-              ),
-            ),
-        ],
       ],
     );
   }
@@ -139,7 +155,7 @@ class _Step extends StatelessWidget {
     required this.title,
     required this.detail,
     required this.status,
-    required this.compact,
+    required this.circle,
     required this.onTap,
   });
 
@@ -148,7 +164,9 @@ class _Step extends StatelessWidget {
   final String title;
   final String detail;
   final _StepStatus status;
-  final bool compact;
+
+  /// Circle diameter: 40, or 36 on phones.
+  final double circle;
   final VoidCallback onTap;
 
   @override
@@ -166,11 +184,11 @@ class _Step extends StatelessWidget {
       semanticLabel: 'Step $number, $title: $detail',
       radius: const BorderRadius.all(SwRadius.field),
       builder: (context, state) {
-        final circle = AnimatedContainer(
+        final dot = AnimatedContainer(
           duration: duration,
           curve: SwMotion.enter,
-          width: compact ? 36 : 40,
-          height: compact ? 36 : 40,
+          width: circle,
+          height: circle,
           decoration: BoxDecoration(
             color: fill,
             shape: BoxShape.circle,
@@ -199,49 +217,39 @@ class _Step extends StatelessWidget {
             ),
           ),
         );
-        final texts = Column(
-          crossAxisAlignment: compact
-              ? CrossAxisAlignment.center
-              : CrossAxisAlignment.start,
-          children: [
-            Text(
-              title,
-              style: SwType.label.copyWith(
-                color: status == _StepStatus.todo
-                    ? SwColors.inkMuted
-                    : SwColors.ink,
-                decoration: state.hovered ? TextDecoration.underline : null,
-                decorationColor: SwColors.stamp,
+        return SizedBox(
+          width: double.infinity,
+          child: Column(
+            children: [
+              dot,
+              const SizedBox(height: SwSpace.sm),
+              Text(
+                title,
+                textAlign: TextAlign.center,
+                style: SwType.label.copyWith(
+                  color: status == _StepStatus.todo
+                      ? SwColors.inkMuted
+                      : SwColors.ink,
+                  decoration: state.hovered ? TextDecoration.underline : null,
+                  decorationColor: SwColors.stamp,
+                ),
               ),
-            ),
-            AnimatedSwitcher(
-              duration: duration,
-              child: Text(
-                detail,
-                key: ValueKey(detail),
-                textAlign: compact ? TextAlign.center : TextAlign.start,
-                style: SwType.caption,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4),
+                child: AnimatedSwitcher(
+                  duration: duration,
+                  child: Text(
+                    detail,
+                    key: ValueKey(detail),
+                    textAlign: TextAlign.center,
+                    style: SwType.caption,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
               ),
-            ),
-          ],
-        );
-        if (compact) {
-          return Column(children: [circle, const SizedBox(height: 6), texts]);
-        }
-        return Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            circle,
-            const SizedBox(width: SwSpace.sm),
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.only(top: 2),
-                child: texts,
-              ),
-            ),
-          ],
+            ],
+          ),
         );
       },
     );
