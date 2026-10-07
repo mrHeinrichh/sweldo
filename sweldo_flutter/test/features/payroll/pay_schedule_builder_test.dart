@@ -94,7 +94,15 @@ void main() {
             home: Scaffold(
               body: Padding(
                 padding: EdgeInsets.all(40),
-                child: SingleChildScrollView(child: PayScheduleBuilder()),
+                child: SingleChildScrollView(
+                  child: Column(
+                    children: [
+                      PayScheduleBuilder(),
+                      SizedBox(height: 16),
+                      ScheduleInsights(),
+                    ],
+                  ),
+                ),
               ),
             ),
           ),
