@@ -108,6 +108,29 @@ void main() {
     ],
   );
 
+  blocTest<PayrollFormBloc, PayrollFormState>(
+    'won’t leave the team step until every wallet address is in',
+    build: build,
+    act: (bloc) => bloc.add(const PayrollStepRequested(1)),
+    expect: () => [
+      isA<PayrollFormState>()
+          .having((s) => s.step, 'step', 0)
+          .having((s) => s.teamChecks, 'teamChecks', 1),
+    ],
+  );
+
+  blocTest<PayrollFormBloc, PayrollFormState>(
+    'moves on once every employee has a wallet address',
+    build: build,
+    act: (bloc) => bloc
+      ..add(RecipientChanged('id0', employee: ana))
+      ..add(const PayrollStepRequested(1)),
+    skip: 1,
+    expect: () => [
+      isA<PayrollFormState>().having((s) => s.step, 'step', 1),
+    ],
+  );
+
   test('lists what blocks locking', () {
     final state = build().state;
     expect(state.missingAddresses, 1);

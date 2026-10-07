@@ -131,6 +131,18 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('minus and plus step the payout count', (tester) async {
+    await pump(tester);
+    final start = form.state.payouts;
+    await tester.tap(find.byTooltip('One more payout'));
+    await tester.pump();
+    expect(form.state.payouts, start + 1);
+    await tester.tap(find.byTooltip('One fewer payout'));
+    await tester.tap(find.byTooltip('One fewer payout'));
+    await tester.pump();
+    expect(form.state.payouts, start - 1);
+  });
+
   testWidgets('a preset fills cadence, count and start', (tester) async {
     await pump(tester);
     await tester.tap(find.text('Weekly for a quarter'));
