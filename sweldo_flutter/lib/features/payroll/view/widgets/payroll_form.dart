@@ -166,7 +166,7 @@ class _PayrollFormState extends State<PayrollForm> {
               key: _top,
               child: PayrollProgress(
                 state: state,
-                onSelect: (index) => bloc.add(PayrollStepChanged(index)),
+                onSelect: (index) => bloc.add(PayrollStepRequested(index)),
               ),
             ),
             const SizedBox(height: SwSpace.xl),
@@ -248,7 +248,7 @@ class PayrollActions extends StatelessWidget {
             label: _steps[state.step].next!,
             icon: SwIcons.forward,
             expand: pinned,
-            onPressed: () => bloc.add(PayrollStepChanged(state.step + 1)),
+            onPressed: () => bloc.add(PayrollStepRequested(state.step + 1)),
           )
         : _LockButton(expand: pinned);
 
@@ -327,6 +327,7 @@ class _TeamStep extends StatelessWidget {
     final state = context.watch<PayrollFormBloc>().state;
     final bloc = context.read<PayrollFormBloc>();
     final count = state.recipients.length;
+    final firstIncomplete = state.recipients.indexWhere(state.isIncomplete);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -371,6 +372,8 @@ class _TeamStep extends StatelessWidget {
                       assetLabel: asset,
                       removable: count > 1,
                       animateIn: !initialIds.contains(state.recipients[i].id),
+                      teamChecks: state.teamChecks,
+                      focusOnCheck: i == firstIncomplete,
                     ),
                   ),
               ],

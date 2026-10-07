@@ -10,19 +10,19 @@ import 'package:reown_sign/reown_sign.dart'
         RequiredNamespace,
         SessionData,
         SessionRequestParams;
-import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../core/error/app_exception.dart';
 import '../../../../core/stellar/stellar_network.dart';
 import '../../domain/wallet_session.dart';
 import '../wallet_connector.dart';
+import 'freighter_links.dart';
 
 /// Freighter Mobile (iOS/Android) over WalletConnect v2.
 ///
 /// Freighter Mobile implements the `stellar` namespace with
 /// `stellar_signXDR` (params `{xdr}`, result `{signedXDR}`) on the
-/// `stellar:testnet` chain. Its production deep-link scheme is
-/// `freighterwallet://`.
+/// `stellar:testnet` chain. Pairing opens the app through its registered
+/// native link, `freighterwallet://wc-redirect` ([FreighterLinks]).
 class FreighterMobileConnector extends WalletConnector {
   FreighterMobileConnector({
     required this.projectId,
@@ -34,7 +34,6 @@ class FreighterMobileConnector extends WalletConnector {
 
   static const _namespace = 'stellar';
   static const _signMethod = 'stellar_signXDR';
-  static const _deepLinkScheme = 'freighterwallet';
 
   ReownSignClient? _client;
   SessionData? _session;
@@ -141,7 +140,8 @@ class FreighterMobileConnector extends WalletConnector {
     final uri = response.uri;
     if (uri != null) {
       onPairingUri?.call(uri);
-      if (_onPhone) unawaited(_openFreighter(pairingUri: uri));
+      // Freighter, or its store page if it isn't installed.
+      if (_onPhone) unawaited(FreighterLinks.open(FreighterLinks.pair(uri)));
     }
     try {
       _session = await response.session.future.timeout(
@@ -192,7 +192,9 @@ class FreighterMobileConnector extends WalletConnector {
       ),
     );
     // Bring Freighter forward so the request is in front of the person.
-    if (_onPhone) unawaited(_openFreighter());
+    if (_onPhone) {
+      unawaited(FreighterLinks.open(FreighterLinks.app, storeFallback: false));
+    }
 
     final dynamic result;
     try {
@@ -228,20 +230,6 @@ class FreighterMobileConnector extends WalletConnector {
       );
     } catch (_) {
       // The relay may already have dropped the session.
-    }
-  }
-
-  Future<void> _openFreighter({Uri? pairingUri}) async {
-    final link = pairingUri == null
-        ? Uri.parse('$_deepLinkScheme://')
-        : Uri.parse(
-            '$_deepLinkScheme://wc?uri='
-            '${Uri.encodeComponent(pairingUri.toString())}',
-          );
-    try {
-      await launchUrl(link, mode: LaunchMode.externalApplication);
-    } catch (_) {
-      // Freighter not installed; the pairing sheet offers a QR fallback.
     }
   }
 

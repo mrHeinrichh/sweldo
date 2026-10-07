@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type KeyboardEvent, type PointerEvent, type ReactNode } from 'react'
 import {
-  CalendarClock, CalendarDays, CalendarRange, Check, ChevronDown, GripVertical, Hourglass, Info, Layers, ShieldCheck,
+  CalendarClock, CalendarDays, CalendarRange, Check, ChevronDown, GripVertical, Hourglass, Info, Layers, Minus, Plus, ShieldCheck,
   Sun, Timer, TriangleAlert, Wallet, Zap, type LucideIcon,
 } from 'lucide-react'
 import { CADENCE_ORDER, CADENCES, type Cadence } from '../../lib/schedule'
@@ -247,44 +247,52 @@ function PayoutTrack({ payouts, capacity, paydays, onChange }: { payouts: number
   const gap = Math.min(1.5, pitch * 0.12)
 
   return (
-    <div
-      ref={box}
-      className={`track ${dragging ? 'dragging' : ''}`}
-      role="slider"
-      tabIndex={0}
-      aria-label="Payouts per employee"
-      aria-valuemin={1}
-      aria-valuemax={capacity}
-      aria-valuenow={payouts}
-      onKeyDown={onKey}
-      onFocus={() => setFocused(true)}
-      onBlur={() => setFocused(false)}
-      onPointerDown={(event: PointerEvent<HTMLDivElement>) => {
-        event.currentTarget.setPointerCapture(event.pointerId)
-        setDragging(true)
-        setFrom(event.clientX)
-      }}
-      onPointerMove={(event) => { if (dragging) setFrom(event.clientX) }}
-      onPointerUp={() => setDragging(false)}
-      onPointerCancel={() => setDragging(false)}
-    >
-      <div className="track-bubble" style={{ left: bubbleLeft, width: bubbleWidth }}>
-        <div className="track-bubble-inner">
-          <span className="t-label">{payouts === 1 ? '1 payout' : `${payouts} payouts`}</span>
-          {last && <span className="t-caption">ends {formatShortDate(last)}</span>}
+    <div className="track-row">
+      <button type="button" className="track-step" aria-label="One fewer payout" title="One fewer payout" disabled={payouts <= 1} onClick={() => onChange(payouts - 1)}>
+        <Minus size={18} />
+      </button>
+      <div
+        ref={box}
+        className={`track ${dragging ? 'dragging' : ''}`}
+        role="slider"
+        tabIndex={0}
+        aria-label="Payouts per employee"
+        aria-valuemin={1}
+        aria-valuemax={capacity}
+        aria-valuenow={payouts}
+        onKeyDown={onKey}
+        onFocus={() => setFocused(true)}
+        onBlur={() => setFocused(false)}
+        onPointerDown={(event: PointerEvent<HTMLDivElement>) => {
+          event.currentTarget.setPointerCapture(event.pointerId)
+          setDragging(true)
+          setFrom(event.clientX)
+        }}
+        onPointerMove={(event) => { if (dragging) setFrom(event.clientX) }}
+        onPointerUp={() => setDragging(false)}
+        onPointerCancel={() => setDragging(false)}
+      >
+        <div className="track-bubble" style={{ left: bubbleLeft, width: bubbleWidth }}>
+          <div className="track-bubble-inner">
+            <span className="t-label">{payouts === 1 ? '1 payout' : `${payouts} payouts`}</span>
+            {last && <span className="t-caption">ends {formatShortDate(last)}</span>}
+          </div>
         </div>
+        <div className="track-slots">
+          {Array.from({ length: SLOTS }, (_, k) => k + 1).map((i) => (
+            <span key={i} className="track-slot-cell" style={{ padding: `0 ${gap}px` }}>
+              <span className={`track-slot ${i > capacity ? 'locked' : i <= payouts ? (i === payouts ? 'filled edge' : 'filled') : ''}`} />
+            </span>
+          ))}
+        </div>
+        {capacity < SLOTS && <span className="track-limit" style={{ left: pitch * capacity - 1 }} />}
+        <span className={`track-knob ${focused ? 'focused' : ''}`} style={{ left: handleX - 9 }}><GripVertical size={14} /></span>
+        {first && <span className="t-caption track-start">Starts {formatShortDate(first)}</span>}
+        <span className={`t-caption track-end ${capacity < SLOTS ? 'limited' : ''}`}>{capacity < SLOTS ? `Team limit ${capacity}` : `Up to ${SLOTS}`}</span>
       </div>
-      <div className="track-slots">
-        {Array.from({ length: SLOTS }, (_, k) => k + 1).map((i) => (
-          <span key={i} className="track-slot-cell" style={{ padding: `0 ${gap}px` }}>
-            <span className={`track-slot ${i > capacity ? 'locked' : i <= payouts ? (i === payouts ? 'filled edge' : 'filled') : ''}`} />
-          </span>
-        ))}
-      </div>
-      {capacity < SLOTS && <span className="track-limit" style={{ left: pitch * capacity - 1 }} />}
-      <span className={`track-knob ${focused ? 'focused' : ''}`} style={{ left: handleX - 9 }}><GripVertical size={14} /></span>
-      {first && <span className="t-caption track-start">Starts {formatShortDate(first)}</span>}
-      <span className={`t-caption track-end ${capacity < SLOTS ? 'limited' : ''}`}>{capacity < SLOTS ? `Team limit ${capacity}` : `Up to ${SLOTS}`}</span>
+      <button type="button" className="track-step" aria-label="One more payout" title="One more payout" disabled={payouts >= capacity} onClick={() => onChange(payouts + 1)}>
+        <Plus size={18} />
+      </button>
     </div>
   )
 }
@@ -304,7 +312,8 @@ function Presets() {
   const { state } = form
   const wrap = useUp('sm')
   return (
-    <div className={`presets ${wrap ? 'wrap' : 'scroll'}`}>
+    // Phones get an even two-column grid that stays inside the card.
+    <div className={`presets ${wrap ? 'wrap' : 'grid'}`}>
       {PRESETS.map((preset) => {
         const payouts = Math.min(preset.payouts, form.capacity)
         const selected = state.cadence === preset.cadence && state.payouts === payouts && state.firstPaydayIn === preset.firstIn && !state.firstPaydayAt

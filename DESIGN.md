@@ -85,6 +85,9 @@ Use these sparingly; each one means something.
 - Changing step scrolls the form's top into view and slides the new step in from the side
   you're moving toward.
 
+**Required fields** say so beside their label. Errors appear once a field is left, or when
+someone tries to continue; the first field to fix takes focus.
+
 **Sample data.** Forms open with fresh, realistic sample values every time the page is entered:
 names, pay and a schedule. Wallet addresses are never invented, and an address someone typed is
 kept.

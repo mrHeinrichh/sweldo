@@ -47,11 +47,28 @@ export function PayrollForm() {
   const lastHash = state.lastProof?.hash
   useEffect(() => { if (lastHash) account.refresh() }, [lastHash]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const go = (next: PayrollStep) => {
-    form.goToStep(next)
+  const revealTop = () => {
     // Bring the start of the form back into view if it scrolled away.
     const node = top.current
     if (node && node.getBoundingClientRect().top < 80) ensureVisible(node, 0.08, !reduced)
+  }
+  const go = (next: PayrollStep) => {
+    form.goToStep(next)
+    revealTop()
+  }
+  /** Forward moves need every employee's wallet address and pay first. */
+  const advance = (next: PayrollStep) => {
+    if (form.requestStep(next)) {
+      revealTop()
+      return
+    }
+    // Point at the first thing to fix once the team step is on screen.
+    window.setTimeout(() => {
+      const field = document.querySelector<HTMLInputElement>('.recipients input[aria-invalid="true"]')
+      if (!field) return
+      ensureVisible(field, 0.3, !reduced)
+      field.focus({ preventScroll: true })
+    }, 60)
   }
 
   const locked = step === 2 && state.lastProof !== null
@@ -61,7 +78,7 @@ export function PayrollForm() {
 
   return (
     <Panel className="payroll-form">
-      <div ref={top} className="wizard-progress"><PayrollProgress onSelect={(index) => go(index as PayrollStep)} /></div>
+      <div ref={top} className="wizard-progress"><PayrollProgress onSelect={(index) => advance(index as PayrollStep)} /></div>
       <AccountSetupPrompts trustlineMessage={`Add a ${assetLabel} trustline so this wallet can hold and lock ${assetLabel} for payroll.`} />
       <AnimatedNotice data={state.notice} />
 
@@ -81,7 +98,7 @@ export function PayrollForm() {
             ? <Button label="Back" icon={<ArrowLeft />} tone="secondary" disabled={state.submitting} onClick={() => go((step - 1) as PayrollStep)} />
             : <span />}
           {step < 2
-            ? <Button label={STEPS[step].next!} icon={<ArrowRight />} onClick={() => go((step + 1) as PayrollStep)} className="wizard-primary" />
+            ? <Button label={STEPS[step].next!} icon={<ArrowRight />} onClick={() => advance((step + 1) as PayrollStep)} className="wizard-primary" />
             : <LockButton />}
         </WizardActions>
       )}
@@ -131,6 +148,7 @@ function TeamStep({ initialIds }: { initialIds: Set<string> }) {
             removable={count > 1}
             animateIn={!initialIds.has(row.id)}
             disabled={state.submitting}
+            showErrors={state.teamChecks > 0}
           />
         ))}
       </div>

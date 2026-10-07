@@ -14,7 +14,7 @@ import type { WalletAccount, WalletKind, WalletState } from './types'
 
 export type { WalletAccount, WalletKind, WalletState } from './types'
 export { FREIGHTER_MISSING, FreighterMissingError } from './freighter-extension'
-export { freighterDeepLink, isMobileBrowser, walletConnectProjectId } from './walletconnect'
+export { freighterDeepLink, freighterStoreName, freighterStoreUrl, isMobileBrowser, openFreighter, walletConnectProjectId } from './walletconnect'
 
 // One place that knows which Freighter is connected. Everything that signs
 // goes through `signXdr`, so features never care whether the signature came

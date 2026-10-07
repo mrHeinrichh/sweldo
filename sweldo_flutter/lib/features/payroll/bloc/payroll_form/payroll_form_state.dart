@@ -11,6 +11,7 @@ class PayrollFormState extends Equatable {
     this.notice,
     this.lastProof,
     this.step = 0,
+    this.teamChecks = 0,
     this.firstPaydayAt,
   });
 
@@ -31,6 +32,23 @@ class PayrollFormState extends Equatable {
 
   /// Wizard step: 0 team, 1 schedule, 2 review and lock.
   final int step;
+
+  /// Times someone tried to leave the team step incomplete; above 0 shows
+  /// field errors.
+  final int teamChecks;
+
+  /// Whether every employee has a wallet address and pay that splits.
+  bool get teamComplete => missingAddresses == 0 && invalidAmounts == 0;
+
+  /// Whether [recipient] still needs a wallet address or pay that splits.
+  bool isIncomplete(PayrollRecipient recipient) {
+    final total = Amount.tryUnits(recipient.total) ?? BigInt.zero;
+    final each =
+        Amount.tryUnits(amountPerPayout(recipient.total)) ?? BigInt.zero;
+    return !recipient.hasValidAddress ||
+        total <= BigInt.zero ||
+        each <= BigInt.zero;
+  }
 
   /// A specific first payday picked on the calendar. Overrides
   /// [firstPaydayIn] when set.
@@ -93,6 +111,7 @@ class PayrollFormState extends Equatable {
     NoticeData? Function()? notice,
     PayrollProof? Function()? lastProof,
     int? step,
+    int? teamChecks,
     DateTime? Function()? firstPaydayAt,
   }) => PayrollFormState(
     recipients: recipients ?? this.recipients,
@@ -104,6 +123,7 @@ class PayrollFormState extends Equatable {
     notice: notice != null ? notice() : this.notice,
     lastProof: lastProof != null ? lastProof() : this.lastProof,
     step: step ?? this.step,
+    teamChecks: teamChecks ?? this.teamChecks,
     firstPaydayAt: firstPaydayAt != null ? firstPaydayAt() : this.firstPaydayAt,
   );
 
@@ -118,6 +138,7 @@ class PayrollFormState extends Equatable {
     notice,
     lastProof,
     step,
+    teamChecks,
     firstPaydayAt,
   ];
 }

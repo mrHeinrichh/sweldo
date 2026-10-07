@@ -183,6 +183,8 @@ class _Step extends StatelessWidget {
       hoverShadow: false,
       semanticLabel: 'Step $number, $title: $detail',
       radius: const BorderRadius.all(SwRadius.field),
+      // Keyboard focus rings the circle, not the whole column.
+      ring: false,
       builder: (context, state) {
         final dot = AnimatedContainer(
           duration: duration,
@@ -221,7 +223,27 @@ class _Step extends StatelessWidget {
           width: double.infinity,
           child: Column(
             children: [
-              dot,
+              Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  dot,
+                  if (state.focused)
+                    Positioned(
+                      left: -5,
+                      top: -5,
+                      right: -5,
+                      bottom: -5,
+                      child: IgnorePointer(
+                        child: DecoratedBox(
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            border: Border.all(color: SwColors.stamp, width: 2),
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
               const SizedBox(height: SwSpace.sm),
               Text(
                 title,

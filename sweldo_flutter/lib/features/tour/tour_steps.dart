@@ -58,11 +58,11 @@ const sweldoTour = [
     route: '/employer',
     target: 'payout-track',
     payrollStep: 1,
-    title: 'Drag to set the number of payouts',
+    title: 'Set the number of payouts',
     body:
         'Each slot is one payout. Hatched slots are past what one Stellar '
         'transaction can hold for your team.',
-    tryIt: 'Drag the handle left or right.',
+    tryIt: 'Drag the handle, or tap − and +.',
   ),
   TourStep(
     route: '/employer',
