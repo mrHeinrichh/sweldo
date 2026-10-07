@@ -63,9 +63,17 @@ final class PayrollDraftStarted extends PayrollFormEvent {
   const PayrollDraftStarted();
 }
 
-/// Moves the wizard to [step] (0 team, 1 schedule, 2 review and lock).
+/// Moves the wizard to [step] (0 team, 1 schedule, 2 review and lock)
+/// without checks. The guide uses this.
 final class PayrollStepChanged extends PayrollFormEvent {
   const PayrollStepChanged(this.step);
+  final int step;
+}
+
+/// Asks to move to [step]. Moving past the team step needs every employee's
+/// wallet address and pay; otherwise the team step shows what's missing.
+final class PayrollStepRequested extends PayrollFormEvent {
+  const PayrollStepRequested(this.step);
   final int step;
 }
 

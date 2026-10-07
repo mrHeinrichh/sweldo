@@ -116,11 +116,24 @@ class PayrollFormBloc extends Bloc<PayrollFormEvent, PayrollFormState> {
     on<PayrollDraftStarted>((event, emit) {
       // A payroll being signed keeps its draft.
       if (state.submitting) return;
-      emit(_rolled(_sampler, state).copyWith(step: 0, lastProof: () => null));
+      emit(
+        _rolled(
+          _sampler,
+          state,
+        ).copyWith(step: 0, teamChecks: 0, lastProof: () => null),
+      );
     });
     on<PayrollStepChanged>(
       (event, emit) => emit(state.copyWith(step: event.step.clamp(0, 2))),
     );
+    on<PayrollStepRequested>((event, emit) {
+      final step = event.step.clamp(0, 2);
+      if (step > 0 && !state.teamComplete) {
+        emit(state.copyWith(step: 0, teamChecks: state.teamChecks + 1));
+      } else {
+        emit(state.copyWith(step: step));
+      }
+    });
   }
 
   final PayrollSampler _sampler;
