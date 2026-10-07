@@ -1,21 +1,36 @@
 import { useState, type ReactNode } from 'react'
 import { CalendarClock, Check, Coins, KeyRound, UserRound, X } from 'lucide-react'
-import { formatAmount } from '../../state/amount'
+import { formatAmount, tryUnits } from '../../state/amount'
 import { hasValidAddress, usePayrollForm, type PayrollRecipient } from '../../state/payroll-form'
 import { plural } from '../../ui/format'
 import { useUp } from '../../ui/hooks'
 
 /** One employee in the payroll form. */
-export function RecipientRow({ recipient, index, assetLabel, removable, animateIn, disabled }: {
+export function RecipientRow({ recipient, index, assetLabel, removable, animateIn, disabled, showErrors }: {
   recipient: PayrollRecipient; index: number; assetLabel: string; removable: boolean; animateIn: boolean; disabled?: boolean
+  /** Show what's missing even in fields nobody has touched (after Continue). */
+  showErrors?: boolean
 }) {
   const form = usePayrollForm()
   const payouts = form.state.payouts
   const [addressTouched, setAddressTouched] = useState(false)
+  const [totalTouched, setTotalTouched] = useState(false)
   const twoColumns = useUp('md')
   const perPayout = form.amountPerPayout(recipient.total)
   const valid = hasValidAddress(recipient)
-  const showAddressError = addressTouched && recipient.employee.length > 0 && !valid
+  // The wallet address is required: say so once the field is left empty or
+  // someone tries to continue without it.
+  const addressError = valid || !(addressTouched || showErrors)
+    ? null
+    : recipient.employee.length === 0
+      ? 'Add this person’s Stellar wallet address.'
+      : 'A Stellar public key has 56 characters and starts with G.'
+  const totalUnits = tryUnits(recipient.total) ?? 0n
+  const totalError = !(totalTouched || showErrors)
+    ? null
+    : totalUnits <= 0n
+      ? 'Enter the total pay.'
+      : (tryUnits(perPayout) ?? 0n) <= 0n ? `Too small to split into ${payouts} payouts.` : null
   const change = (patch: Partial<Omit<PayrollRecipient, 'id'>>) => form.changeRecipient(recipient.id, patch)
   const name = recipient.name.trim()
 
@@ -33,8 +48,8 @@ export function RecipientRow({ recipient, index, assetLabel, removable, animateI
     </Field>
   )
   const addressField = (
-    <Field label="Wallet address">
-      <InputBox icon={valid ? <Check size={18} /> : <KeyRound size={18} />} iconTone={valid ? 'good' : undefined} error={showAddressError}>
+    <Field label="Wallet address" hint="Required">
+      <InputBox icon={valid ? <Check size={18} /> : <KeyRound size={18} />} iconTone={valid ? 'good' : undefined} error={!!addressError}>
         <input
           className="mono-input"
           value={recipient.employee}
@@ -43,25 +58,30 @@ export function RecipientRow({ recipient, index, assetLabel, removable, animateI
           autoCorrect="off"
           spellCheck={false}
           disabled={disabled}
-          aria-invalid={showAddressError}
+          aria-invalid={!!addressError}
+          aria-required
           onBlur={() => setAddressTouched(true)}
           onChange={(event) => change({ employee: event.target.value.replace(/\s/g, '').toUpperCase() })}
         />
       </InputBox>
-      {showAddressError && <p className="field-error">A Stellar public key has 56 characters and starts with G.</p>}
+      {addressError && <p className="field-error">{addressError}</p>}
     </Field>
   )
   const totalField = (
     <Field label="Total pay">
-      <InputBox icon={<Coins size={18} />} suffix={assetLabel}>
+      <InputBox icon={<Coins size={18} />} suffix={assetLabel} error={!!totalError}>
         <input
           className="figures-input"
           value={recipient.total}
           inputMode="decimal"
           disabled={disabled}
+          aria-invalid={!!totalError}
+          aria-required
+          onBlur={() => setTotalTouched(true)}
           onChange={(event) => change({ total: event.target.value.replace(/[^0-9.,]/g, '') })}
         />
       </InputBox>
+      {totalError && <p className="field-error">{totalError}</p>}
     </Field>
   )
   const splitText = perPayout === '0'
