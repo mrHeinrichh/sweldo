@@ -38,9 +38,8 @@ extension PayCadenceIcon on PayCadence {
 }
 
 /// The schedule as one smart, editable unit: a sentence whose parts are
-/// controls, a track of payouts to drag, presets, and live insights that
-/// check the plan against the calendar, the transaction limit and the
-/// connected wallet.
+/// controls, a track of payouts to drag, and presets. The checks that follow
+/// from it live on the review step ([ScheduleInsights]).
 class PayScheduleBuilder extends StatelessWidget {
   const PayScheduleBuilder({super.key});
 
@@ -54,14 +53,6 @@ class PayScheduleBuilder extends StatelessWidget {
       builder: (context, now) => Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Row(
-            children: [
-              const Icon(SwIcons.payday, size: 18, color: SwColors.ink),
-              const SizedBox(width: SwSpace.sm),
-              Text('Pay schedule', style: SwType.subtitle),
-            ],
-          ),
-          const SizedBox(height: SwSpace.md),
           TourTarget(
             id: 'schedule-sentence',
             child: _ScheduleSentence(state: state, now: now),
@@ -83,11 +74,6 @@ class PayScheduleBuilder extends StatelessWidget {
           TourTarget(
             id: 'presets',
             child: _Presets(state: state),
-          ),
-          const SizedBox(height: SwSpace.lg),
-          TourTarget(
-            id: 'insights',
-            child: _Insights(state: state, now: now),
           ),
         ],
       ),
@@ -869,13 +855,39 @@ class _Presets extends StatelessWidget {
 // ---------------------------------------------------------------------------
 // Insights: what the plan means, checked against reality.
 
-enum _Tone { neutral, good, caution, danger }
+enum InsightTone { neutral, good, caution, danger }
+
+/// Live checks of the plan against the calendar, the transaction limit and
+/// the connected wallet. [leading] chips (such as what still blocks locking)
+/// come first.
+class ScheduleInsights extends StatelessWidget {
+  const ScheduleInsights({super.key, this.leading = const []});
+
+  final List<Widget> leading;
+
+  @override
+  Widget build(BuildContext context) {
+    final state = context.watch<PayrollFormBloc>().state;
+    return TourTarget(
+      id: 'insights',
+      child: SecondTicker(
+        builder: (context, now) =>
+            _Insights(state: state, now: now, leading: leading),
+      ),
+    );
+  }
+}
 
 class _Insights extends StatelessWidget {
-  const _Insights({required this.state, required this.now});
+  const _Insights({
+    required this.state,
+    required this.now,
+    required this.leading,
+  });
 
   final PayrollFormState state;
   final DateTime now;
+  final List<Widget> leading;
 
   @override
   Widget build(BuildContext context) {
@@ -893,46 +905,47 @@ class _Insights extends StatelessWidget {
     const limit = StellarNetwork.maxOperationsPerTransaction;
 
     final insights = <Widget>[
-      _InsightChip(
+      ...leading,
+      InsightChip(
         icon: SwIcons.payday,
-        tone: _Tone.neutral,
+        tone: InsightTone.neutral,
         text: cadence == PayCadence.minute
             ? 'First payday ${formatTime(first)}'
             : 'First payday ${formatDateTime(first)}',
       ),
-      _InsightChip(
+      InsightChip(
         icon: SwIcons.hourglass,
-        tone: _Tone.neutral,
+        tone: InsightTone.neutral,
         text: state.payouts == 1
             ? 'One payout, nothing after it'
             : 'Last payday ${formatShortDate(last)}, '
                   '${cadence.units(state.payouts - 1)} after the first',
       ),
       if (state.overOperationLimit)
-        _InsightChip(
+        InsightChip(
           icon: SwIcons.warning,
-          tone: _Tone.danger,
+          tone: InsightTone.danger,
           text: '$count payouts won’t fit one transaction ($limit max)',
           actionLabel: 'Fit to one transaction',
           onAction: () => bloc.add(ScheduleChanged(payouts: state.capacity)),
         )
       else
-        _InsightChip(
+        InsightChip(
           icon: SwIcons.ledger,
-          tone: _Tone.neutral,
+          tone: InsightTone.neutral,
           text: '$count of $limit payouts in one signature',
         ),
       _coverage(asset, native, connected, balances),
       if (cadence == PayCadence.minute)
-        const _InsightChip(
+        const InsightChip(
           icon: SwIcons.info,
-          tone: _Tone.neutral,
+          tone: InsightTone.neutral,
           text: 'Keep the pay page open to watch each payout unlock live',
         ),
       if (cadence == PayCadence.month)
-        const _InsightChip(
+        const InsightChip(
           icon: SwIcons.info,
-          tone: _Tone.neutral,
+          tone: InsightTone.neutral,
           text:
               'Monthly means every 30 days, so paydays drift from calendar dates',
         ),
@@ -952,16 +965,16 @@ class _Insights extends StatelessWidget {
     WalletBalances? balances,
   ) {
     if (!connected) {
-      return const _InsightChip(
+      return const InsightChip(
         icon: SwIcons.wallet,
-        tone: _Tone.neutral,
+        tone: InsightTone.neutral,
         text: 'Connect a wallet to check it can cover this payroll',
       );
     }
     if (balances == null) {
-      return const _InsightChip(
+      return const InsightChip(
         icon: SwIcons.wallet,
-        tone: _Tone.caution,
+        tone: InsightTone.caution,
         text: 'This wallet isn’t funded on Testnet yet',
       );
     }
@@ -974,16 +987,16 @@ class _Insights extends StatelessWidget {
     if (native) {
       final need = total + reserves;
       if (spendableXlm >= need) {
-        return _InsightChip(
+        return InsightChip(
           icon: SwIcons.protectedPay,
-          tone: _Tone.good,
+          tone: InsightTone.good,
           text:
               'Your wallet covers it, ${Amount.format(spendableXlm - need)} XLM to spare',
         );
       }
-      return _InsightChip(
+      return InsightChip(
         icon: SwIcons.warning,
-        tone: _Tone.caution,
+        tone: InsightTone.caution,
         text:
             'Short by ${Amount.format(need - spendableXlm)} XLM, '
             'including ${Amount.format(reserves)} XLM in payout reserves',
@@ -991,32 +1004,34 @@ class _Insights extends StatelessWidget {
     }
     final held = double.tryParse(balances.asset) ?? 0;
     if (held < total) {
-      return _InsightChip(
+      return InsightChip(
         icon: SwIcons.warning,
-        tone: _Tone.caution,
+        tone: InsightTone.caution,
         text: 'Short by ${Amount.format(total - held)} $asset',
       );
     }
     if (spendableXlm < reserves) {
-      return _InsightChip(
+      return InsightChip(
         icon: SwIcons.warning,
-        tone: _Tone.caution,
+        tone: InsightTone.caution,
         text:
             'Needs ${Amount.format(reserves)} XLM for payout reserves; '
             'the wallet has ${Amount.format(spendableXlm)} free',
       );
     }
-    return _InsightChip(
+    return InsightChip(
       icon: SwIcons.protectedPay,
-      tone: _Tone.good,
+      tone: InsightTone.good,
       text:
           'Your wallet covers it, ${Amount.format(held - total)} $asset to spare',
     );
   }
 }
 
-class _InsightChip extends StatelessWidget {
-  const _InsightChip({
+/// One check about the plan, optionally with an action that fixes it.
+class InsightChip extends StatelessWidget {
+  const InsightChip({
+    super.key,
     required this.icon,
     required this.tone,
     required this.text,
@@ -1025,7 +1040,7 @@ class _InsightChip extends StatelessWidget {
   });
 
   final IconData icon;
-  final _Tone tone;
+  final InsightTone tone;
   final String text;
   final String? actionLabel;
   final VoidCallback? onAction;
@@ -1033,10 +1048,10 @@ class _InsightChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final (fg, bg) = switch (tone) {
-      _Tone.neutral => (SwColors.inkMuted, Colors.white),
-      _Tone.good => (SwColors.payday, SwColors.paydayWash),
-      _Tone.caution => (SwColors.caution, SwColors.cautionWash),
-      _Tone.danger => (SwColors.danger, SwColors.dangerWash),
+      InsightTone.neutral => (SwColors.inkMuted, Colors.white),
+      InsightTone.good => (SwColors.payday, SwColors.paydayWash),
+      InsightTone.caution => (SwColors.caution, SwColors.cautionWash),
+      InsightTone.danger => (SwColors.danger, SwColors.dangerWash),
     };
     return AnimatedSwitcher(
       duration: SwMotion.of(context, SwMotion.standard),
@@ -1047,7 +1062,7 @@ class _InsightChip extends StatelessWidget {
           color: bg,
           borderRadius: const BorderRadius.all(SwRadius.field),
           border: Border.all(
-            color: tone == _Tone.neutral
+            color: tone == InsightTone.neutral
                 ? SwColors.rule
                 : fg.withValues(alpha: 0.3),
           ),
@@ -1061,7 +1076,7 @@ class _InsightChip extends StatelessWidget {
               child: Text(
                 text,
                 style: SwType.caption.copyWith(
-                  color: tone == _Tone.neutral ? SwColors.ink : fg,
+                  color: tone == InsightTone.neutral ? SwColors.ink : fg,
                   fontWeight: FontWeight.w600,
                 ),
               ),
