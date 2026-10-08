@@ -128,7 +128,10 @@ class PayrollFormBloc extends Bloc<PayrollFormEvent, PayrollFormState> {
     );
     on<PayrollStepRequested>((event, emit) {
       final step = event.step.clamp(0, 2);
-      if (step > 0 && !state.teamComplete) {
+      final ready = state.recipients.every(
+        (r) => !state.isIncomplete(r, employer: event.employer),
+      );
+      if (step > 0 && !ready) {
         emit(state.copyWith(step: 0, teamChecks: state.teamChecks + 1));
       } else {
         emit(state.copyWith(step: step));
@@ -210,6 +213,10 @@ class PayrollFormBloc extends Bloc<PayrollFormEvent, PayrollFormState> {
     if (rows.any((r) => !r.hasValidAddress)) {
       return 'Every employee needs a valid 56-character Stellar public key '
           '(starts with G).';
+    }
+    if (rows.any((r) => r.employee == session.address)) {
+      return 'An employee has your own wallet address. Use their wallet '
+          'instead.';
     }
     if (rows.any(
           (r) => (Amount.tryUnits(r.total) ?? BigInt.zero) <= BigInt.zero,

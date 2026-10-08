@@ -131,6 +131,36 @@ void main() {
     ],
   );
 
+  blocTest<PayrollFormBloc, PayrollFormState>(
+    'won’t accept the connected wallet as an employee',
+    build: build,
+    act: (bloc) => bloc
+      ..add(RecipientChanged('id0', employee: employer))
+      ..add(PayrollStepRequested(1, employer: employer)),
+    skip: 1,
+    expect: () => [
+      isA<PayrollFormState>()
+          .having((s) => s.step, 'step', 0)
+          .having((s) => s.teamChecks, 'teamChecks', 1),
+    ],
+  );
+
+  blocTest<PayrollFormBloc, PayrollFormState>(
+    'refuses to lock pay into the employer’s own wallet',
+    build: build,
+    act: (bloc) => bloc
+      ..add(RecipientChanged('id0', employee: employer))
+      ..add(PayrollSubmitted(session)),
+    skip: 1,
+    expect: () => [
+      isA<PayrollFormState>().having(
+        (s) => s.notice?.text,
+        'notice',
+        contains('your own wallet'),
+      ),
+    ],
+  );
+
   test('lists what blocks locking', () {
     final state = build().state;
     expect(state.missingAddresses, 1);

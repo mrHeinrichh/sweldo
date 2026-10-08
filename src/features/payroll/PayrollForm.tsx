@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
-import { ArrowLeft, ArrowRight, KeyRound, LockKeyhole, Plus, RotateCcw, ShieldCheck, TriangleAlert, Undo2, Wallet } from 'lucide-react'
+import { ArrowLeft, ArrowRight, CircleAlert, KeyRound, LockKeyhole, Plus, RotateCcw, ShieldCheck, TriangleAlert, Undo2, Wallet } from 'lucide-react'
 import { useAccount } from '../../state/account'
 import { formatAmount, formatUnits } from '../../state/amount'
 import { assetLabel } from '../../state/config'
@@ -148,7 +148,7 @@ function TeamStep({ initialIds }: { initialIds: Set<string> }) {
             removable={count > 1}
             animateIn={!initialIds.has(row.id)}
             disabled={state.submitting}
-            showErrors={state.teamChecks > 0}
+            teamChecks={state.teamChecks}
           />
         ))}
       </div>
@@ -159,6 +159,7 @@ function TeamStep({ initialIds }: { initialIds: Set<string> }) {
 /** The plan as a printed pay summary, then the checks, then the policy. */
 function ReviewStep({ onFix }: { onFix: (step: PayrollStep) => void }) {
   const form = usePayrollForm()
+  const { session } = useWallet()
   const { state, problems } = form
   const people = state.recipients.length
   return (
@@ -175,9 +176,11 @@ function ReviewStep({ onFix }: { onFix: (step: PayrollStep) => void }) {
           <div key={row.id} className="review-row">
             <div className="review-person">
               <span className="t-subtitle">{row.name.trim() || `Employee ${index + 1}`}</span>
-              {hasValidAddress(row)
-                ? <span className="t-mono">{shortKey(row.employee, 6)}</span>
-                : <span className="review-missing t-caption"><KeyRound size={13} />Wallet address missing</span>}
+              {!hasValidAddress(row)
+                ? <span className="review-missing t-caption"><KeyRound size={13} />Wallet address missing</span>
+                : row.employee === session?.address
+                  ? <span className="review-missing t-caption"><CircleAlert size={13} />Your own wallet</span>
+                  : <span className="t-mono">{shortKey(row.employee, 6)}</span>}
             </div>
             <div className="review-pay">
               <span className="t-figures">{formatAmount(row.total || '0')} {assetLabel}</span>
@@ -194,6 +197,15 @@ function ReviewStep({ onFix }: { onFix: (step: PayrollStep) => void }) {
               tone="danger"
               text={`${problems.missingAddresses} ${plural(problems.missingAddresses, 'employee needs', 'employees need')} a wallet address`}
               actionLabel="Add addresses"
+              onAction={() => onFix(0)}
+            />
+          )}
+          {problems.ownWallet > 0 && (
+            <InsightChip
+              icon={TriangleAlert}
+              tone="danger"
+              text={`${problems.ownWallet} ${plural(problems.ownWallet, 'employee has', 'employees have')} your own wallet address`}
+              actionLabel="Fix addresses"
               onAction={() => onFix(0)}
             />
           )}
@@ -222,7 +234,7 @@ function LockButton() {
   const { state, problems } = form
   const session = wallet.session
   const sm = useUp('sm')
-  const blocked = problems.missingAddresses > 0 || problems.invalidAmounts > 0 || problems.overLimit
+  const blocked = problems.missingAddresses > 0 || problems.invalidAmounts > 0 || problems.ownWallet > 0 || problems.overLimit
   return (
     <span data-tour="lock" className="wizard-lock wizard-primary">
       <Button

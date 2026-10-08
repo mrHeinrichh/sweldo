@@ -1,16 +1,19 @@
-import { useState, type ReactNode } from 'react'
-import { CalendarClock, Check, Coins, KeyRound, UserRound, X } from 'lucide-react'
+import { forwardRef, useEffect, useRef, useState, type ReactNode } from 'react'
+import { CalendarClock, Check, CircleAlert, Coins, KeyRound, UserRound, X } from 'lucide-react'
 import { formatAmount, tryUnits } from '../../state/amount'
-import { hasValidAddress, usePayrollForm, type PayrollRecipient } from '../../state/payroll-form'
+import { hasValidAddress, OWN_WALLET_MESSAGE, usePayrollForm, type PayrollRecipient } from '../../state/payroll-form'
+import { useWallet } from '../../state/wallet'
 import { plural } from '../../ui/format'
 import { useUp } from '../../ui/hooks'
 
 /** One employee in the payroll form. */
-export function RecipientRow({ recipient, index, assetLabel, removable, animateIn, disabled, showErrors }: {
+export function RecipientRow({ recipient, index, assetLabel, removable, animateIn, disabled, teamChecks = 0 }: {
   recipient: PayrollRecipient; index: number; assetLabel: string; removable: boolean; animateIn: boolean; disabled?: boolean
-  /** Show what's missing even in fields nobody has touched (after Continue). */
-  showErrors?: boolean
+  /** Times someone tried to continue with the team incomplete. Above 0, untouched fields show what's missing too. */
+  teamChecks?: number
 }) {
+  const showErrors = teamChecks > 0
+  const { session } = useWallet()
   const form = usePayrollForm()
   const payouts = form.state.payouts
   const [addressTouched, setAddressTouched] = useState(false)
@@ -18,19 +21,26 @@ export function RecipientRow({ recipient, index, assetLabel, removable, animateI
   const twoColumns = useUp('md')
   const perPayout = form.amountPerPayout(recipient.total)
   const valid = hasValidAddress(recipient)
+  // Paying your own wallet is caught the moment the address is complete.
+  const ownWallet = valid && !!session && recipient.employee === session.address
   // The wallet address is required: say so once the field is left empty or
   // someone tries to continue without it.
-  const addressError = valid || !(addressTouched || showErrors)
-    ? null
-    : recipient.employee.length === 0
-      ? 'Add this person’s Stellar wallet address.'
-      : 'A Stellar public key has 56 characters and starts with G.'
+  const addressError = ownWallet
+    ? OWN_WALLET_MESSAGE
+    : valid || !(addressTouched || showErrors)
+      ? null
+      : recipient.employee.length === 0
+        ? 'Add this person’s Stellar wallet address.'
+        : 'A Stellar public key has 56 characters and starts with G.'
   const totalUnits = tryUnits(recipient.total) ?? 0n
   const totalError = !(totalTouched || showErrors)
     ? null
     : totalUnits <= 0n
       ? 'Enter the total pay.'
       : (tryUnits(perPayout) ?? 0n) <= 0n ? `Too small to split into ${payouts} payouts.` : null
+  // A field shakes when its error appears, and again on each blocked Continue.
+  const addressBox = useShake(!!addressError, `${ownWallet}:${teamChecks}`)
+  const totalBox = useShake(!!totalError, teamChecks)
   const change = (patch: Partial<Omit<PayrollRecipient, 'id'>>) => form.changeRecipient(recipient.id, patch)
   const name = recipient.name.trim()
 
@@ -49,7 +59,12 @@ export function RecipientRow({ recipient, index, assetLabel, removable, animateI
   )
   const addressField = (
     <Field label="Wallet address" hint="Required">
-      <InputBox icon={valid ? <Check size={18} /> : <KeyRound size={18} />} iconTone={valid ? 'good' : undefined} error={!!addressError}>
+      <InputBox
+        ref={addressBox}
+        icon={ownWallet ? <CircleAlert size={18} /> : valid ? <Check size={18} /> : <KeyRound size={18} />}
+        iconTone={ownWallet ? 'bad' : valid ? 'good' : undefined}
+        error={!!addressError}
+      >
         <input
           className="mono-input"
           value={recipient.employee}
@@ -64,12 +79,12 @@ export function RecipientRow({ recipient, index, assetLabel, removable, animateI
           onChange={(event) => change({ employee: event.target.value.replace(/\s/g, '').toUpperCase() })}
         />
       </InputBox>
-      {addressError && <p className="field-error">{addressError}</p>}
+      {addressError && <p key={ownWallet ? 'own' : 'address'} className="field-error" role={ownWallet ? 'alert' : undefined}>{addressError}</p>}
     </Field>
   )
   const totalField = (
     <Field label="Total pay">
-      <InputBox icon={<Coins size={18} />} suffix={assetLabel} error={!!totalError}>
+      <InputBox ref={totalBox} icon={<Coins size={18} />} suffix={assetLabel} error={!!totalError}>
         <input
           className="figures-input"
           value={recipient.total}
@@ -126,12 +141,27 @@ function Field({ label, hint, children }: { label: string; hint?: string; childr
   )
 }
 
-function InputBox({ icon, iconTone, suffix, error, children }: { icon: ReactNode; iconTone?: 'good'; suffix?: string; error?: boolean; children: ReactNode }) {
-  return (
-    <span className={`input-box ${error ? 'error' : ''}`}>
-      <span className={`input-icon ${iconTone === 'good' ? 'good' : ''}`}>{icon}</span>
-      {children}
-      {suffix && <span className="input-suffix t-label">{suffix}</span>}
-    </span>
-  )
+const InputBox = forwardRef<HTMLSpanElement, { icon: ReactNode; iconTone?: 'good' | 'bad'; suffix?: string; error?: boolean; children: ReactNode }>(
+  function InputBox({ icon, iconTone, suffix, error, children }, ref) {
+    return (
+      <span ref={ref} className={`input-box ${error ? 'error' : ''}`}>
+        <span className={`input-icon ${iconTone ?? ''}`}>{icon}</span>
+        {children}
+        {suffix && <span className="input-suffix t-label">{suffix}</span>}
+      </span>
+    )
+  },
+)
+
+/** Restarts a short horizontal shake on the field whenever `trigger` changes while `active`. */
+function useShake(active: boolean, trigger: unknown) {
+  const ref = useRef<HTMLSpanElement>(null)
+  useEffect(() => {
+    const node = ref.current
+    if (!node || !active) return
+    node.classList.remove('shake')
+    void node.offsetWidth // restart the animation
+    node.classList.add('shake')
+  }, [active, trigger])
+  return ref
 }

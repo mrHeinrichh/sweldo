@@ -8,7 +8,7 @@ import { amountString, perPayout, tryUnits } from './amount'
 import { assetLabel, explorer, hasRegistry, MAX_OPERATIONS, MAX_PAYOUTS_PER_EMPLOYEE, payrollAsset } from './config'
 import { friendlyError } from './errors'
 import { prependSchedules, type PayrollSchedule } from './schedules-store'
-import type { WalletSession } from './wallet'
+import { useWallet, type WalletSession } from './wallet'
 
 // Port of PayrollFormBloc: the "New payroll" form and its one-signature
 // submission. Lives above the router so it survives tab switches.
@@ -47,7 +47,10 @@ export type PayrollStep = 0 | 1 | 2
 export const PAYROLL_STEPS = 3
 
 /** What still blocks locking, checked without a wallet. */
-export type PayrollProblems = { missingAddresses: number; invalidAmounts: number; overLimit: boolean }
+export type PayrollProblems = { missingAddresses: number; invalidAmounts: number; ownWallet: number; overLimit: boolean }
+
+/** The message shown when an employee's address is the connected wallet's own. */
+export const OWN_WALLET_MESSAGE = 'This is your connected wallet. Enter the employee’s own wallet address.'
 
 export type ScheduleChange = { cadence?: Cadence; payouts?: number; firstPaydayIn?: number; firstPaydayAt?: Date | null }
 
@@ -117,6 +120,11 @@ const PayrollFormContext = createContext<PayrollFormApi | null>(null)
 
 export function PayrollFormProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState(initialState)
+  // The connected wallet pays; an employee using it would be paying themselves.
+  const { session } = useWallet()
+  const employer = session?.address ?? null
+  const employerRef = useRef(employer)
+  employerRef.current = employer
   const stateRef = useRef(state)
   stateRef.current = state
   const update = useCallback((change: (previous: PayrollFormState) => PayrollFormState) => {
@@ -136,6 +144,7 @@ export function PayrollFormProvider({ children }: { children: ReactNode }) {
     if (rows.some((row) => !hasValidAddress(row))) {
       return 'Every employee needs a valid 56-character Stellar public key (starts with G).'
     }
+    if (rows.some((row) => row.employee === session.address)) return 'An employee has your own wallet address. Use their wallet instead.'
     if (rows.some((row) => (tryUnits(row.total) ?? 0n) <= 0n) || current.payouts < 1 || current.payouts > MAX_PAYOUTS_PER_EMPLOYEE) {
       return 'Use positive payroll amounts and 1–50 payouts.'
     }
@@ -272,6 +281,7 @@ export function PayrollFormProvider({ children }: { children: ReactNode }) {
       requestStep: (step) => {
         const rows = stateRef.current.recipients
         const incomplete = rows.some((row) => !hasValidAddress(row)
+          || row.employee === employerRef.current
           || (tryUnits(row.total) ?? 0n) <= 0n
           || (tryUnits(perPayout(row.total, stateRef.current.payouts)) ?? 0n) <= 0n)
         if (step > 0 && incomplete) {
@@ -285,12 +295,13 @@ export function PayrollFormProvider({ children }: { children: ReactNode }) {
         missingAddresses: state.recipients.filter((row) => !hasValidAddress(row)).length,
         invalidAmounts: state.recipients.filter((row) => (tryUnits(row.total) ?? 0n) <= 0n
           || (tryUnits(perPayout(row.total, state.payouts)) ?? 0n) <= 0n).length,
+        ownWallet: employer ? state.recipients.filter((row) => row.employee === employer).length : 0,
         overLimit: balanceCount > MAX_OPERATIONS,
       },
       dismissNotice: () => update((previous) => ({ ...previous, notice: null })),
       submit: (session) => { void submit(session) },
     }
-  }, [state, amountPerPayout, update, submit])
+  }, [state, amountPerPayout, update, submit, employer])
 
   return <PayrollFormContext.Provider value={api}>{children}</PayrollFormContext.Provider>
 }

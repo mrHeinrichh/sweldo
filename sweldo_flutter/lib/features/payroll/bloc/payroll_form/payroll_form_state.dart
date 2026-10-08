@@ -41,14 +41,21 @@ class PayrollFormState extends Equatable {
   bool get teamComplete => missingAddresses == 0 && invalidAmounts == 0;
 
   /// Whether [recipient] still needs a wallet address or pay that splits.
-  bool isIncomplete(PayrollRecipient recipient) {
+  /// An address equal to [employer] (the connected wallet) doesn't count.
+  bool isIncomplete(PayrollRecipient recipient, {String? employer}) {
     final total = Amount.tryUnits(recipient.total) ?? BigInt.zero;
     final each =
         Amount.tryUnits(amountPerPayout(recipient.total)) ?? BigInt.zero;
     return !recipient.hasValidAddress ||
+        (employer != null && recipient.employee == employer) ||
         total <= BigInt.zero ||
         each <= BigInt.zero;
   }
+
+  /// Employees whose wallet address is the connected [employer] wallet.
+  int ownWalletCount(String? employer) => employer == null
+      ? 0
+      : recipients.where((r) => r.employee == employer).length;
 
   /// A specific first payday picked on the calendar. Overrides
   /// [firstPaydayIn] when set.

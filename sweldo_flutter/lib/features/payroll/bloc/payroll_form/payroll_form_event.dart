@@ -73,8 +73,11 @@ final class PayrollStepChanged extends PayrollFormEvent {
 /// Asks to move to [step]. Moving past the team step needs every employee's
 /// wallet address and pay; otherwise the team step shows what's missing.
 final class PayrollStepRequested extends PayrollFormEvent {
-  const PayrollStepRequested(this.step);
+  const PayrollStepRequested(this.step, {this.employer});
   final int step;
+
+  /// The connected wallet; an employee may not use it.
+  final String? employer;
 }
 
 final class PayrollNoticeDismissed extends PayrollFormEvent {

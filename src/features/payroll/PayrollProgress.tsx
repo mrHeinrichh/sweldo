@@ -4,6 +4,7 @@ import { tryUnits } from '../../state/amount'
 import { MAX_PAYOUTS_PER_EMPLOYEE } from '../../state/config'
 import { hasValidAddress, usePayrollForm } from '../../state/payroll-form'
 import { plural } from '../../ui/format'
+import { useWallet } from '../../state/wallet'
 import { useUp } from '../../ui/hooks'
 
 type Status = 'todo' | 'current' | 'done'
@@ -13,7 +14,9 @@ export function PayrollProgress({ onSelect }: { onSelect: (section: number) => v
   const form = usePayrollForm()
   const { state } = form
   const rows = state.recipients
-  const valid = rows.filter(hasValidAddress).length
+  const { session } = useWallet()
+  // Your own wallet doesn't count as an employee's wallet.
+  const valid = rows.filter((row) => hasValidAddress(row) && row.employee !== session?.address).length
   const amountsOk = rows.every((row) => (tryUnits(row.total) ?? 0n) > 0n)
   const teamDone = valid === rows.length && amountsOk
   const scheduleDone = state.payouts >= 1 && state.payouts <= MAX_PAYOUTS_PER_EMPLOYEE && !form.overOperationLimit

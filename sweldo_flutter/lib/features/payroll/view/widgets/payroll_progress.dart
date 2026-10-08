@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/motion/interactive.dart';
 import '../../../../core/responsive/breakpoints.dart';
@@ -11,6 +12,7 @@ import '../../../../core/theme/tokens.dart';
 import '../../../../core/theme/typography.dart';
 import '../../../../core/utils/amount.dart';
 import '../../../../core/utils/format.dart';
+import '../../../wallet/bloc/wallet_bloc.dart';
 import '../../bloc/payroll_form/payroll_form_bloc.dart';
 
 enum _StepStatus { todo, current, done }
@@ -30,7 +32,11 @@ class PayrollProgress extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final rows = state.recipients;
-    final valid = rows.where((r) => r.hasValidAddress).length;
+    // Your own wallet doesn't count as an employee's wallet.
+    final employer = context.select((WalletBloc b) => b.state.session?.address);
+    final valid = rows
+        .where((r) => r.hasValidAddress && r.employee != employer)
+        .length;
     final amountsOk = rows.every(
       (r) => (Amount.tryUnits(r.total) ?? BigInt.zero) > BigInt.zero,
     );
