@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -11,6 +13,7 @@ import '../../../../core/theme/tokens.dart';
 import '../../../../core/theme/typography.dart';
 import '../../../../core/utils/amount.dart';
 import '../../../../core/utils/format.dart';
+import '../../../wallet/bloc/wallet_bloc.dart';
 import '../../bloc/payroll_form/payroll_form_bloc.dart';
 import '../../domain/payroll_recipient.dart';
 
@@ -129,10 +132,17 @@ class _RecipientRowState extends State<RecipientRow> {
     final recipient = widget.recipient;
     final perPayout = Amount.perPayout(recipient.total, widget.payouts);
     final checking = widget.teamChecks > 0;
+    // Paying your own wallet is caught the moment the address is complete.
+    final employer = context.select((WalletBloc b) => b.state.session?.address);
+    final ownWallet =
+        recipient.hasValidAddress &&
+        employer != null &&
+        recipient.employee == employer;
     // The wallet address is required: say so once the field is left empty or
     // someone tries to continue without it.
-    final String? addressError =
-        recipient.hasValidAddress || !(_addressTouched || checking)
+    final String? addressError = ownWallet
+        ? ownWalletMessage
+        : recipient.hasValidAddress || !(_addressTouched || checking)
         ? null
         : recipient.employee.isEmpty
         ? 'Add this person’s Stellar wallet address.'
@@ -163,53 +173,71 @@ class _RecipientRowState extends State<RecipientRow> {
     final addressField = _Field(
       label: 'Wallet address',
       hint: 'Required',
-      child: TextField(
-        controller: _address,
-        focusNode: _addressNode,
-        style: SwType.mono.copyWith(color: SwColors.ink, fontSize: 14),
-        autocorrect: false,
-        enableSuggestions: false,
-        inputFormatters: [
-          FilteringTextInputFormatter.deny(RegExp(r'\s')),
-          UpperCaseTextFormatter(),
-        ],
-        decoration: InputDecoration(
-          hintText: 'G…',
-          prefixIcon: _FieldIcon(
-            recipient.hasValidAddress ? SwIcons.check : SwIcons.key,
-            color: recipient.hasValidAddress ? SwColors.payday : null,
+      // A field shakes when its error appears, and again on each blocked
+      // Continue.
+      child: _Shake(
+        active: addressError != null,
+        trigger: '$ownWallet:${widget.teamChecks}',
+        child: TextField(
+          controller: _address,
+          focusNode: _addressNode,
+          style: SwType.mono.copyWith(color: SwColors.ink, fontSize: 14),
+          autocorrect: false,
+          enableSuggestions: false,
+          inputFormatters: [
+            FilteringTextInputFormatter.deny(RegExp(r'\s')),
+            UpperCaseTextFormatter(),
+          ],
+          decoration: InputDecoration(
+            hintText: 'G…',
+            prefixIcon: _FieldIcon(
+              ownWallet
+                  ? SwIcons.error
+                  : recipient.hasValidAddress
+                  ? SwIcons.check
+                  : SwIcons.key,
+              color: ownWallet
+                  ? SwColors.danger
+                  : recipient.hasValidAddress
+                  ? SwColors.payday
+                  : null,
+            ),
+            errorText: addressError,
           ),
-          errorText: addressError,
+          onChanged: (value) => _changed(employee: value),
         ),
-        onChanged: (value) => _changed(employee: value),
       ),
     );
     final totalField = _Field(
       label: 'Total pay',
-      child: TextField(
-        controller: _total,
-        focusNode: _totalNode,
-        keyboardType: const TextInputType.numberWithOptions(decimal: true),
-        inputFormatters: [
-          FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
-        ],
-        style: SwType.figures.copyWith(fontSize: 16),
-        decoration: InputDecoration(
-          prefixIcon: const _FieldIcon(SwIcons.amount),
-          suffixIcon: Padding(
-            padding: const EdgeInsets.only(right: SwSpace.md),
-            child: Text(
-              widget.assetLabel,
-              style: SwType.label.copyWith(color: SwColors.inkMuted),
+      child: _Shake(
+        active: totalError != null,
+        trigger: widget.teamChecks,
+        child: TextField(
+          controller: _total,
+          focusNode: _totalNode,
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          inputFormatters: [
+            FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
+          ],
+          style: SwType.figures.copyWith(fontSize: 16),
+          decoration: InputDecoration(
+            prefixIcon: const _FieldIcon(SwIcons.amount),
+            suffixIcon: Padding(
+              padding: const EdgeInsets.only(right: SwSpace.md),
+              child: Text(
+                widget.assetLabel,
+                style: SwType.label.copyWith(color: SwColors.inkMuted),
+              ),
             ),
+            suffixIconConstraints: const BoxConstraints(
+              minWidth: 0,
+              minHeight: 0,
+            ),
+            errorText: totalError,
           ),
-          suffixIconConstraints: const BoxConstraints(
-            minWidth: 0,
-            minHeight: 0,
-          ),
-          errorText: totalError,
+          onChanged: (value) => _changed(total: value),
         ),
-        onChanged: (value) => _changed(total: value),
       ),
     );
 
@@ -434,4 +462,66 @@ class UpperCaseTextFormatter extends TextInputFormatter {
     TextEditingValue oldValue,
     TextEditingValue newValue,
   ) => newValue.copyWith(text: newValue.text.toUpperCase());
+}
+
+/// Shown when an employee's address is the connected wallet's own.
+const ownWalletMessage =
+    'This is your connected wallet. Enter the employee’s own wallet address.';
+
+/// Shakes its child sideways once when [trigger] changes while [active].
+class _Shake extends StatefulWidget {
+  const _Shake({
+    required this.active,
+    required this.trigger,
+    required this.child,
+  });
+
+  final bool active;
+  final Object trigger;
+  final Widget child;
+
+  @override
+  State<_Shake> createState() => _ShakeState();
+}
+
+class _ShakeState extends State<_Shake> with SingleTickerProviderStateMixin {
+  late final _controller = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 420),
+  );
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.active) _controller.forward();
+  }
+
+  @override
+  void didUpdateWidget(_Shake old) {
+    super.didUpdateWidget(old);
+    if (widget.active && (!old.active || old.trigger != widget.trigger)) {
+      _controller.forward(from: 0);
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (SwMotion.reduced(context)) return widget.child;
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        final t = _controller.value;
+        // Three quick swings that settle back to rest.
+        final dx = math.sin(t * math.pi * 6) * 5 * (1 - t);
+        return Transform.translate(offset: Offset(dx, 0), child: child);
+      },
+      child: widget.child,
+    );
+  }
 }

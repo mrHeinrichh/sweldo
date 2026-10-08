@@ -166,7 +166,12 @@ class _PayrollFormState extends State<PayrollForm> {
               key: _top,
               child: PayrollProgress(
                 state: state,
-                onSelect: (index) => bloc.add(PayrollStepRequested(index)),
+                onSelect: (index) => bloc.add(
+                  PayrollStepRequested(
+                    index,
+                    employer: context.read<WalletBloc>().state.session?.address,
+                  ),
+                ),
               ),
             ),
             const SizedBox(height: SwSpace.xl),
@@ -248,7 +253,12 @@ class PayrollActions extends StatelessWidget {
             label: _steps[state.step].next!,
             icon: SwIcons.forward,
             expand: pinned,
-            onPressed: () => bloc.add(PayrollStepRequested(state.step + 1)),
+            onPressed: () => bloc.add(
+              PayrollStepRequested(
+                state.step + 1,
+                employer: context.read<WalletBloc>().state.session?.address,
+              ),
+            ),
           )
         : _LockButton(expand: pinned);
 
@@ -306,7 +316,7 @@ class _LockButton extends StatelessWidget {
         loading: state.submitting,
         onPressed: session == null
             ? () => showConnectWalletSheet(context)
-            : state.blocked
+            : state.blocked || state.ownWalletCount(session.address) > 0
             ? null
             : () => context.read<PayrollFormBloc>().add(
                 PayrollSubmitted(session),
@@ -327,7 +337,10 @@ class _TeamStep extends StatelessWidget {
     final state = context.watch<PayrollFormBloc>().state;
     final bloc = context.read<PayrollFormBloc>();
     final count = state.recipients.length;
-    final firstIncomplete = state.recipients.indexWhere(state.isIncomplete);
+    final employer = context.select((WalletBloc b) => b.state.session?.address);
+    final firstIncomplete = state.recipients.indexWhere(
+      (r) => state.isIncomplete(r, employer: employer),
+    );
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -394,6 +407,7 @@ class _ReviewStep extends StatelessWidget {
     final asset = context.read<AppConfig>().assetLabel;
     final state = context.watch<PayrollFormBloc>().state;
     final bloc = context.read<PayrollFormBloc>();
+    final employer = context.select((WalletBloc b) => b.state.session?.address);
     final people = state.recipients.length;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -417,6 +431,9 @@ class _ReviewStep extends StatelessWidget {
                 address: state.recipients[i].hasValidAddress
                     ? state.recipients[i].employee
                     : null,
+                ownWallet:
+                    employer != null &&
+                    state.recipients[i].employee == employer,
                 total: state.recipients[i].total,
                 payouts: state.payouts,
                 each: state.amountPerPayout(state.recipients[i].total),
@@ -436,6 +453,17 @@ class _ReviewStep extends StatelessWidget {
                     '${plural(state.missingAddresses, 'employee needs', 'employees need')} '
                     'a wallet address',
                 actionLabel: 'Add addresses',
+                onAction: () => bloc.add(const PayrollStepChanged(0)),
+              ),
+            if (state.ownWalletCount(employer) > 0)
+              InsightChip(
+                icon: SwIcons.warning,
+                tone: InsightTone.danger,
+                text:
+                    '${state.ownWalletCount(employer)} '
+                    '${plural(state.ownWalletCount(employer), 'employee has', 'employees have')} '
+                    'your own wallet address',
+                actionLabel: 'Fix addresses',
                 onAction: () => bloc.add(const PayrollStepChanged(0)),
               ),
             if (state.invalidAmounts > 0)
@@ -475,6 +503,7 @@ class _ReviewRow extends StatelessWidget {
   const _ReviewRow({
     required this.name,
     required this.address,
+    required this.ownWallet,
     required this.total,
     required this.payouts,
     required this.each,
@@ -483,6 +512,9 @@ class _ReviewRow extends StatelessWidget {
 
   final String name;
   final String? address;
+
+  /// The address is the connected wallet's own.
+  final bool ownWallet;
   final String total;
   final int payouts;
   final String each;
@@ -502,7 +534,22 @@ class _ReviewRow extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(name, style: SwType.subtitle),
-                if (address != null)
+                if (ownWallet)
+                  Row(
+                    children: [
+                      const Icon(
+                        SwIcons.error,
+                        size: 13,
+                        color: SwColors.danger,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        'Your own wallet',
+                        style: SwType.caption.copyWith(color: SwColors.danger),
+                      ),
+                    ],
+                  )
+                else if (address != null)
                   Text(
                     shortKey(address!, 6),
                     style: SwType.mono,
