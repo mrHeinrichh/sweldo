@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useMemo, useRef, useState, type
 import { StrKey } from '@stellar/stellar-sdk'
 import { createBatchSchedule, recordScheduleProof } from '../lib/stellar'
 import { CADENCES, capacity, firstPayday, paydays, rollSample, type Cadence } from '../lib/schedule'
+import type { RosterImport } from '../lib/roster-import'
 import type { NoticeData } from '../ui/Notice'
 import { plural } from '../ui/format'
 import { amountString, perPayout, tryUnits } from './amount'
@@ -74,6 +75,7 @@ type PayrollFormApi = {
   /** Moves forward only once every employee has a wallet address and pay. */
   requestStep: (step: PayrollStep) => boolean
   problems: PayrollProblems
+  importRoster: (roster: RosterImport) => void
   dismissNotice: () => void
   submit: (session: WalletSession) => void
 }
@@ -298,6 +300,10 @@ export function PayrollFormProvider({ children }: { children: ReactNode }) {
         ownWallet: employer ? state.recipients.filter((row) => row.employee === employer).length : 0,
         overLimit: balanceCount > MAX_OPERATIONS,
       },
+      importRoster: (roster) => update((previous) => previous.submitting ? previous : ({
+        ...previous, recipients: roster.rows.map((row) => ({ ...row, id: newId() })),
+        cadence: roster.cadence, notice: null, lastProof: null,
+      })),
       dismissNotice: () => update((previous) => ({ ...previous, notice: null })),
       submit: (session) => { void submit(session) },
     }

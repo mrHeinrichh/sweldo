@@ -314,3 +314,29 @@
 .schedule-status { display: inline-flex; align-items: center; gap: 4px; color: var(--ink-muted); }
 .schedule-status svg { flex: none; }
 
+/* Roster import and ledger verification */
+.roster-heading { display: flex; align-items: center; justify-content: space-between; gap: var(--s-md); }
+.roster-settings, .roster-file { margin: var(--s-md) 0; }
+.roster-text { width: 100%; box-sizing: border-box; padding: 12px; border: 1px solid var(--rule); border-radius: var(--r-field); background: #fff; color: var(--ink); font: 400 13px/1.6 var(--mono); resize: vertical; }
+.roster-text:focus { outline: 2px solid var(--stamp); outline-offset: 2px; }
+.roster-error { color: var(--danger); overflow-wrap: anywhere; }
+.roster-preview { margin-top: var(--s-lg); }
+.roster-table-wrap { max-height: 260px; overflow: auto; margin-top: var(--s-sm); }
+.roster-table { width: 100%; border-collapse: collapse; font: 400 13px/1.5 var(--font); }
+.roster-table th, .roster-table td { padding: 10px 6px; border-bottom: 1px solid var(--rule); text-align: left; overflow-wrap: anywhere; }
+.roster-table th { color: var(--ink-muted); font-weight: 600; }
+.roster-table td:first-child { max-width: 160px; }
+.roster-table td:last-child { text-align: right; font-variant-numeric: tabular-nums; }
+.roster-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--s-sm); margin-top: var(--s-lg); }
+.ledger-address { display: flex; flex-wrap: wrap; align-items: end; gap: var(--s-sm); margin-top: var(--s-lg); }
+.ledger-address .field { flex: 1 1 200px; }
+.ledger-checked { margin-bottom: 0; }
+.ledger-payouts { display: flex; flex-direction: column; gap: var(--s-sm); }
+.ledger-payout-list { margin: 0; padding: 0; list-style: none; }
+.ledger-payout { display: flex; flex-direction: column; gap: 5px; padding: var(--s-sm) 0; border-bottom: 1px solid var(--rule); }
+.ledger-payout-top, .ledger-payout-proof { display: flex; align-items: center; flex-wrap: wrap; gap: var(--s-sm); min-width: 0; }
+.ledger-payout-top { justify-content: space-between; }
+.ledger-status { color: var(--ink-muted); }
+.ledger-status.claimed { color: var(--payday); }
+.ledger-status.cancelled, .ledger-status.unknown { color: var(--danger); }
+@media (max-width: 420px) { .roster-table th, .roster-table td { padding: 8px 3px; font-size: 12px; } }

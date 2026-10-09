@@ -18,6 +18,7 @@ import { PayrollProgress } from './PayrollProgress'
 import { PayrollProofCard } from './PayrollProofCard'
 import { InsightChip, PayScheduleBuilder, ScheduleInsights } from './PayScheduleBuilder'
 import { RecipientRow } from './RecipientRow'
+import { RosterImport } from './RosterImport'
 
 const STEPS: { title: string; description: string; next?: string }[] = [
   { title: 'Who are you paying?', description: 'Add each person with their Stellar wallet and the total to pay them.', next: 'Continue to schedule' },
@@ -135,6 +136,7 @@ function TeamStep({ initialIds }: { initialIds: Set<string> }) {
       <div className="team-actions">
         <span className="t-caption">{count} {plural(count, 'employee')}</span>
         <span className="team-actions-buttons">
+          <RosterImport />
           <Button label={sm ? 'Add employee' : 'Add'} icon={<Plus />} tone="quiet" disabled={state.submitting} onClick={form.addRecipient} />
         </span>
       </div>

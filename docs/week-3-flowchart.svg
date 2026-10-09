@@ -1,0 +1,63 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1120" height="820" viewBox="0 0 1120 820" role="img" aria-labelledby="title desc">
+  <title id="title">Sweldo Week 3: Payroll state reconstruction and roster import</title>
+  <desc id="desc">A local browser reads employer operations, creation effects, live balances and claim history from Stellar Testnet Horizon. CSV or pasted roster rows feed the existing wallet-signed batch engine, then the dashboard recovers the resulting payroll state in a fresh browser.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10Z" fill="#555"/></marker>
+    <style>text{font-family:Arial,sans-serif;fill:#161616;font-size:17px} .heading{font-size:30px;font-weight:700}.sub{font-size:15px;fill:#555}.label{font-weight:700}.box{fill:#fff;stroke:#b6bec4;stroke-width:1.5}.read{fill:#eef8f2;stroke:#639e7c;stroke-width:1.5}.arrow{fill:none;stroke:#555;stroke-width:2;marker-end:url(#arrow)}</style>
+  </defs>
+  <rect width="1120" height="820" fill="#fff"/>
+  <text x="40" y="50" class="heading">Sweldo / Week 3</text>
+  <text x="40" y="80" class="sub">Local web app. Public Stellar Testnet reads. Wallet approval for funding and cancellation.</text>
+  <text x="40" y="127" class="label">PAYROLL STATE RECONSTRUCTION</text>
+  <rect class="box" x="40" y="150" width="300" height="100" rx="6"/>
+  <text x="60" y="180" class="label">Open local Sweldo</text>
+  <text x="60" y="210">Enter employer public key</text>
+  <text x="60" y="235" class="sub">or connect the employer wallet</text>
+  <path class="arrow" d="M340 200H405"/>
+  <rect class="read" x="410" y="150" width="300" height="100" rx="6"/>
+  <text x="430" y="180" class="label">Horizon account operations</text>
+  <text x="430" y="210">Follow every history page</text>
+  <text x="430" y="235" class="sub">Match worker-after / employer-before</text>
+  <path class="arrow" d="M710 200H775"/>
+  <rect class="read" x="780" y="150" width="300" height="100" rx="6"/>
+  <text x="800" y="180" class="label">Creation effects</text>
+  <text x="800" y="210">Recover exact balance IDs</text>
+  <text x="800" y="235" class="sub">Includes previously claimed balances</text>
+  <path class="arrow" d="M930 250V295"/>
+  <rect class="read" x="780" y="300" width="300" height="110" rx="6"/>
+  <text x="800" y="332" class="label">History + live balances</text>
+  <text x="800" y="361">Who claimed? Is it still open?</text>
+  <text x="800" y="389" class="sub">Verify asset, amount and predicates</text>
+  <path class="arrow" d="M780 355H715"/>
+  <rect class="box" x="410" y="300" width="300" height="110" rx="6"/>
+  <text x="430" y="332" class="label">Reconstruct payroll</text>
+  <text x="430" y="361">Schedules, status, balance IDs</text>
+  <text x="430" y="389" class="sub">Cancellation uses each exact deadline</text>
+  <path class="arrow" d="M410 355H345"/>
+  <rect class="box" x="40" y="300" width="300" height="110" rx="6"/>
+  <text x="60" y="332" class="label">Payroll history + receipts</text>
+  <text x="60" y="361">Repeat in a fresh browser</text>
+  <text x="60" y="389" class="sub">No saved schedule state required</text>
+  <text x="40" y="465" class="label">LIGHTWEIGHT ROSTER IMPORT</text>
+  <rect class="box" x="40" y="490" width="300" height="115" rx="6"/>
+  <text x="60" y="521" class="label">CSV or pasted rows</text>
+  <text x="60" y="552">Wallet, name, total, cadence</text>
+  <text x="60" y="579" class="sub">One shared cadence per batch</text>
+  <path class="arrow" d="M340 548H405"/>
+  <rect class="box" x="410" y="490" width="300" height="115" rx="6"/>
+  <text x="430" y="521" class="label">Validate + preview</text>
+  <text x="430" y="552">Public keys and exact amounts</text>
+  <text x="430" y="579" class="sub">Employees x payouts must be &lt;= 100</text>
+  <path class="arrow" d="M710 548H775"/>
+  <rect class="box" x="780" y="490" width="300" height="115" rx="6"/>
+  <text x="800" y="521" class="label">Use roster + wallet signature</text>
+  <text x="800" y="552">Existing batch funding engine</text>
+  <text x="800" y="579" class="sub">Employer approves on Testnet</text>
+  <path class="arrow" d="M930 605V665H750V435H560V415"/>
+  <text x="785" y="636" class="sub">Batch confirmed</text>
+  <text x="785" y="657" class="sub">Read Horizon</text>
+  <path d="M40 700H1080" stroke="#d5dadd"/>
+  <text x="40" y="733" class="label">Evidence to record</text>
+  <text x="40" y="763">CSV batch funding hash / worker claim or cancellation receipt / fresh-browser recovery</text>
+  <text x="40" y="790" class="sub">Worker names are session labels. Public wallet addresses and ledger fields identify the recovered payroll.</text>
+</svg>
