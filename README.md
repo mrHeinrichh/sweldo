@@ -91,6 +91,18 @@ npm run week2:dev
 
 Tests run locally without sending transactions. The dev server uses ignored `.env.week2.local`. See [the Week 2 flowchart and demo guide](docs/week-2-claim-convert-demo.md) for Testnet preparation, browser steps, expected results, failure checks, and a recording script. The test command requires Node 22.18+.
 
+## Instaward Week 3: Ledger/Horizon payroll state
+
+The employer dashboard reconstructs schedules, balance IDs, payout claims/cancellations and future-payout eligibility from Horizon operation history, creation effects and live claimable balances. A fresh browser can inspect any employer's public Testnet address without copying stored schedules. CSV or spreadsheet paste imports a validated roster into the existing batch funding form.
+
+```bash
+npm run week3:test
+npm run week3:dev
+npm run week3:inspect -- EMPLOYER_PUBLIC_KEY
+```
+
+See [the Week 3 flowchart and step-by-step demo](docs/week-3-ledger-payroll-demo.md) and [sample roster](docs/week-3-roster-example.csv). The inspect command only reads Horizon. Worker names are optional session labels; recovered payroll state uses public addresses and ledger records. The development server runs locally; wallet-signed demo transactions use Stellar Testnet.
+
 ## Connect with Freighter Mobile
 
 **Connect wallet** offers both Freighters. The browser extension works as before. The Freighter app pairs
