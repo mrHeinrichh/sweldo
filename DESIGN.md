@@ -86,9 +86,7 @@ Use these sparingly; each one means something.
   you're moving toward.
 
 **Required fields** say so beside their label. Errors appear once a field is left, or when
-someone tries to continue; the first field to fix takes focus. A field with an error shakes once
-and its message slides in beneath it. An employee's wallet can't be the connected wallet: that's
-flagged as soon as the address is complete, and locking stays blocked until it's fixed.
+someone tries to continue; the first field to fix takes focus.
 
 **Sample data.** Forms open with fresh, realistic sample values every time the page is entered:
 names, pay and a schedule. Wallet addresses are never invented, and an address someone typed is

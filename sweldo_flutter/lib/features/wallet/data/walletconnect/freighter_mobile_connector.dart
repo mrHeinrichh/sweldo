@@ -26,7 +26,7 @@ import 'freighter_links.dart';
 class FreighterMobileConnector extends WalletConnector {
   FreighterMobileConnector({
     required this.projectId,
-    this.appUrl = 'https://sweldo.app',
+    this.appUrl = 'https://getsweldo.com',
   });
 
   final String projectId;

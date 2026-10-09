@@ -147,20 +147,74 @@ class _WalletChoices extends StatelessWidget {
           ),
           const SizedBox(height: SwSpace.md),
         ],
-        const SizedBox(height: SwSpace.sm),
-        Row(
-          children: [
-            Text("Don't have Freighter? ", style: SwType.bodySmall),
-            ExternalLink(
-              label: 'Get it on ${FreighterLinks.storeName}',
-              uri: FreighterLinks.store,
-              style: SwType.bodySmall.copyWith(fontWeight: FontWeight.w600),
-            ),
-          ],
+        // Only offer the store when Freighter is known to be missing.
+        _FreighterInstalled(
+          builder: (context, installed) => installed == false
+              ? Padding(
+                  padding: const EdgeInsets.only(top: SwSpace.sm),
+                  child: Row(
+                    children: [
+                      Text("Don't have Freighter? ", style: SwType.bodySmall),
+                      ExternalLink(
+                        label: 'Get it on ${FreighterLinks.storeName}',
+                        uri: FreighterLinks.store,
+                        style: SwType.bodySmall.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                )
+              : const SizedBox.shrink(),
         ),
       ],
     );
   }
+}
+
+/// Builds with whether Freighter is installed on this phone: null while
+/// checking, then true or false. Checks again when Sweldo comes back to the
+/// front, so installing Freighter from the store updates the sheet.
+class _FreighterInstalled extends StatefulWidget {
+  const _FreighterInstalled({required this.builder});
+
+  final Widget Function(BuildContext context, bool? installed) builder;
+
+  @override
+  State<_FreighterInstalled> createState() => _FreighterInstalledState();
+}
+
+class _FreighterInstalledState extends State<_FreighterInstalled>
+    with WidgetsBindingObserver {
+  bool? _installed;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _check();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) _check();
+  }
+
+  Future<void> _check() async {
+    final installed = await FreighterLinks.isInstalled();
+    if (mounted && installed != _installed) {
+      setState(() => _installed = installed);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.builder(context, _installed);
 }
 
 class _WalletOption extends StatelessWidget {
@@ -271,14 +325,18 @@ class _PairingView extends StatelessWidget {
       children: [
         Text('Approve in Freighter', style: SwType.title),
         const SizedBox(height: SwSpace.sm),
-        Text(
-          _onPhone
-              ? 'Freighter should open with a connection request. If it '
-                    "isn't installed, you'll go to ${FreighterLinks.storeName} "
-                    'to get it.'
-              : 'Open Freighter on your phone, tap the scanner, and point it '
-                    'at this code. Then approve the connection on Testnet.',
-          style: SwType.bodySmall,
+        _FreighterInstalled(
+          builder: (context, installed) => Text(
+            !_onPhone
+                ? 'Open Freighter on your phone, tap the scanner, and point it '
+                      'at this code. Then approve the connection on Testnet.'
+                : installed == false
+                ? 'Freighter should open with a connection request. If it '
+                      "isn't installed, you'll go to ${FreighterLinks.storeName} "
+                      'to get it.'
+                : 'Freighter should open with a connection request.',
+            style: SwType.bodySmall,
+          ),
         ),
         // On a phone the link opens Freighter directly; the code is for
         // scanning from another device.

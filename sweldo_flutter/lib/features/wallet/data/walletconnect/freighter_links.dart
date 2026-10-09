@@ -43,6 +43,18 @@ abstract final class FreighterLinks {
     _ => 'freighter.app',
   };
 
+  /// Whether the Freighter app is on this phone. Only the native app can
+  /// tell (iOS `LSApplicationQueriesSchemes` and Android `<queries>` list
+  /// [scheme]); browsers and computers answer false and keep the store link.
+  static Future<bool> isInstalled() async {
+    if (kIsWeb || !onPhone) return false;
+    try {
+      return await canLaunchUrl(app);
+    } catch (_) {
+      return false;
+    }
+  }
+
   /// Opens [link] in Freighter. When Freighter isn't installed and
   /// [storeFallback] is on, opens its store page instead. Returns whether
   /// Freighter opened.
