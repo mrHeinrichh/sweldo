@@ -357,10 +357,11 @@ export async function getClaimHistory(address: string): Promise<ClaimHistoryReco
         transaction_hash?: string
         created_at: string
         claimable_balance_id?: string
+        balance_id?: string
       }
       return {
         id: operation.id,
-        balanceId: operation.claimable_balance_id ?? '',
+        balanceId: operation.balance_id ?? operation.claimable_balance_id ?? '',
         transactionHash: operation.transaction_hash,
         claimedAt: operation.created_at,
         source: 'stellar' as const,
