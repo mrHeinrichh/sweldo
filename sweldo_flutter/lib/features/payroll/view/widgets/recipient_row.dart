@@ -31,12 +31,14 @@ class RecipientRow extends StatefulWidget {
     required this.animateIn,
     this.teamChecks = 0,
     this.focusOnCheck = false,
+    this.assetSelector,
   });
 
   final PayrollRecipient recipient;
   final int index;
   final int payouts;
   final String assetLabel;
+  final Widget? assetSelector;
   final bool removable;
   final bool animateIn;
 
@@ -223,13 +225,15 @@ class _RecipientRowState extends State<RecipientRow> {
           style: SwType.figures.copyWith(fontSize: 16),
           decoration: InputDecoration(
             prefixIcon: const _FieldIcon(SwIcons.amount),
-            suffixIcon: Padding(
-              padding: const EdgeInsets.only(right: SwSpace.md),
-              child: Text(
-                widget.assetLabel,
-                style: SwType.label.copyWith(color: SwColors.inkMuted),
-              ),
-            ),
+            suffixIcon:
+                widget.assetSelector ??
+                Padding(
+                  padding: const EdgeInsets.only(right: SwSpace.md),
+                  child: Text(
+                    widget.assetLabel,
+                    style: SwType.label.copyWith(color: SwColors.inkMuted),
+                  ),
+                ),
             suffixIconConstraints: const BoxConstraints(
               minWidth: 0,
               minHeight: 0,

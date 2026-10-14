@@ -13,7 +13,12 @@ class PayrollFormState extends Equatable {
     this.step = 0,
     this.teamChecks = 0,
     this.firstPaydayAt,
+    this.assetId = 'native',
+    this.assetLabel = 'XLM',
   });
+
+  final String assetId;
+  final String assetLabel;
 
   final List<PayrollRecipient> recipients;
 
@@ -120,6 +125,8 @@ class PayrollFormState extends Equatable {
     int? step,
     int? teamChecks,
     DateTime? Function()? firstPaydayAt,
+    String? assetId,
+    String? assetLabel,
   }) => PayrollFormState(
     recipients: recipients ?? this.recipients,
     payouts: payouts ?? this.payouts,
@@ -132,6 +139,8 @@ class PayrollFormState extends Equatable {
     step: step ?? this.step,
     teamChecks: teamChecks ?? this.teamChecks,
     firstPaydayAt: firstPaydayAt != null ? firstPaydayAt() : this.firstPaydayAt,
+    assetId: assetId ?? this.assetId,
+    assetLabel: assetLabel ?? this.assetLabel,
   );
 
   @override
@@ -147,5 +156,7 @@ class PayrollFormState extends Equatable {
     step,
     teamChecks,
     firstPaydayAt,
+    assetId,
+    assetLabel,
   ];
 }

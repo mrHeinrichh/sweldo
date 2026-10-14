@@ -53,6 +53,13 @@ class WalletButton extends StatelessWidget {
         ),
         onSelected: (action) => _onAction(context, action, session.address),
         itemBuilder: (_) => [
+          PopupMenuItem<_WalletAction>(
+            enabled: false,
+            child: Text(
+              '${session.kind.title} · ${session.network}',
+              style: SwType.caption,
+            ),
+          ),
           _item(_WalletAction.copy, SwIcons.copy, 'Copy address'),
           _item(
             _WalletAction.explorer,

@@ -3,6 +3,13 @@ import 'package:stellar_flutter_sdk/stellar_flutter_sdk.dart';
 
 import 'claim_predicate.dart';
 
+class PayoutTotal {
+  const PayoutTotal(this.asset, this.units);
+  final String asset;
+  final BigInt units;
+  String get assetCode => asset == 'native' ? 'XLM' : asset.split(':').first;
+}
+
 class PayoutClaimant extends Equatable {
   const PayoutClaimant(this.destination, this.predicate);
 

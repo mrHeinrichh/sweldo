@@ -4,6 +4,11 @@ sealed class SchedulesEvent {
   const SchedulesEvent();
 }
 
+final class SchedulesInspectRequested extends SchedulesEvent {
+  const SchedulesInspectRequested(this.address);
+  final String address;
+}
+
 final class SchedulesWalletChanged extends SchedulesEvent {
   const SchedulesWalletChanged(this.session);
   final WalletSession? session;

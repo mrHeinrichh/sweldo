@@ -97,7 +97,7 @@ function WrongNetworkBanner() {
         <ContentWidth className="wrong-network-row">
           <TriangleAlert size={18} />
           <p className="t-body-sm t-ink m0">
-            Freighter is on {session?.network ? session.network : 'another network'}. Switch it to Testnet before signing, then reconnect.
+            Your wallet is on {session?.network ? session.network : 'another network'}. Switch it to Testnet before signing, then reconnect.
           </p>
         </ContentWidth>
       </div>

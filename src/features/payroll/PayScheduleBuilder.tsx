@@ -6,7 +6,7 @@ import {
 import { CADENCE_ORDER, CADENCES, type Cadence } from '../../lib/schedule'
 import { useAccount } from '../../state/account'
 import { formatAmount } from '../../state/amount'
-import { assetLabel, MAX_OPERATIONS, MAX_PAYOUTS_PER_EMPLOYEE, usesIssuedAsset } from '../../state/config'
+import { MAX_OPERATIONS, MAX_PAYOUTS_PER_EMPLOYEE } from '../../state/config'
 import { usePayrollForm } from '../../state/payroll-form'
 import { useWallet } from '../../state/wallet'
 import { DatePickerDialog } from '../../ui/Dialog'
@@ -345,7 +345,7 @@ function Insights({ now, children }: { now: Date; children?: ReactNode }) {
   const form = usePayrollForm()
   const { state } = form
   const { session } = useWallet()
-  const { balances } = useAccount()
+  const { balances, asset, assetCode: assetLabel } = useAccount()
   const paydays = form.paydays(now)
   const first = paydays[0]
   const last = paydays[paydays.length - 1]
@@ -354,12 +354,12 @@ function Insights({ now, children }: { now: Date; children?: ReactNode }) {
 
   const coverage = (): ReactNode => {
     if (!session) return <InsightChip icon={Wallet} tone="neutral" text="Connect a wallet to check it can cover this payroll" />
-    if (!balances) return <InsightChip icon={Wallet} tone="caution" text="This wallet isn’t funded on Testnet yet" />
+    if (!balances) return <InsightChip icon={Wallet} tone="neutral" text="Checking this wallet’s Testnet balance" />
     const total = Number(form.totalLockedUnits) / 1e7
     // Each payout reserves 0.5 XLM per claimant, and Sweldo uses two.
     const reserves = count * 1
     const spendableXlm = Math.max(0, balances.xlm - balances.reservedXlm)
-    if (!usesIssuedAsset) {
+    if (asset.isNative()) {
       const need = total + reserves
       if (spendableXlm >= need) return <InsightChip icon={ShieldCheck} tone="good" text={`Your wallet covers it, ${formatAmount(spendableXlm - need)} XLM to spare`} />
       return <InsightChip icon={TriangleAlert} tone="caution" text={`Short by ${formatAmount(need - spendableXlm)} XLM, including ${formatAmount(reserves)} XLM in payout reserves`} />

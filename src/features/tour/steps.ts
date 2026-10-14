@@ -35,8 +35,8 @@ export const SWELDO_TOUR: TourStep[] = [
   },
   {
     target: 'connect',
-    title: 'Connect Freighter',
-    body: 'Use the Freighter extension in this browser, or scan a QR code with the Freighter app on your phone. Sweldo never sees your keys.',
+    title: 'Connect your wallet',
+    body: 'Choose Freighter or xBull on Testnet. The existing Freighter app option is also available when configured. Sweldo never sees your keys.',
   },
   {
     route: '/employer',
@@ -80,7 +80,7 @@ export const SWELDO_TOUR: TourStep[] = [
     target: 'lock',
     payrollStep: 2,
     title: 'Lock it with one signature',
-    body: 'Freighter shows the transaction. Once you approve, every payout is locked on Stellar. You can cancel future payouts until each payday.',
+    body: 'Your wallet shows the transaction. Once you approve, every payout is locked on Stellar. You can cancel future payouts until each payday.',
   },
   {
     route: '/pay',

@@ -14,8 +14,11 @@ export function isNotFound(error: unknown) {
 }
 
 function rejectedMessage(codes: string[]) {
-  if (codes.includes('op_underfunded') || codes.includes('tx_insufficient_balance')) {
-    return "This wallet doesn't hold enough to lock that payroll, including a 1 XLM reserve per payout. Lower the amount or fund the wallet."
+  if (codes.includes('tx_insufficient_balance') || codes.includes('op_low_reserve')) {
+    return 'Not enough available Testnet XLM for fees and reserves. Add test XLM or reduce the number of payouts.'
+  }
+  if (codes.includes('op_underfunded')) {
+    return 'The paying wallet does not hold enough of the selected payroll asset. Enabling an asset only adds a trustline; it does not add funds. Add the configured test asset or lower the payroll total.'
   }
   if (codes.includes('op_no_trust') || codes.includes('op_src_no_trust')) {
     return 'A wallet in this payroll has no trustline for the asset. Enable the asset first.'

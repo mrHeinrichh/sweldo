@@ -7,6 +7,7 @@ import 'package:uuid/uuid.dart';
 
 import '../../../../core/error/error_messages.dart';
 import '../../../../core/stellar/stellar_network.dart';
+import '../../../../core/stellar/payroll_asset.dart';
 import '../../../../core/utils/amount.dart';
 import '../../../../core/utils/format.dart';
 import '../../../../core/widgets/notice.dart';
@@ -14,6 +15,7 @@ import '../../../wallet/domain/wallet_session.dart';
 import '../../data/payroll_repository.dart';
 import '../../data/registry_repository.dart';
 import '../../data/schedule_store.dart';
+import '../../data/roster_import.dart';
 import '../../domain/pay_cadence.dart';
 import '../../domain/payroll_sample.dart';
 import '../../domain/payroll_recipient.dart';
@@ -30,6 +32,8 @@ class PayrollFormBloc extends Bloc<PayrollFormEvent, PayrollFormState> {
     required ScheduleStore store,
     required Asset asset,
     required String assetLabel,
+    List<PayrollAssetOption>? assetOptions,
+    bool Function(Asset)? selectAsset,
     DateTime Function()? clock,
     String Function()? newId,
     Random? random,
@@ -39,6 +43,8 @@ class PayrollFormBloc extends Bloc<PayrollFormEvent, PayrollFormState> {
          store: store,
          asset: asset,
          assetLabel: assetLabel,
+         assetOptions: assetOptions ?? [PayrollAssetOption(asset, assetLabel)],
+         selectAsset: selectAsset,
          clock: clock ?? DateTime.now,
          newId: newId ?? const Uuid().v4,
          sampler: PayrollSampler(random),
@@ -50,6 +56,8 @@ class PayrollFormBloc extends Bloc<PayrollFormEvent, PayrollFormState> {
     required ScheduleStore store,
     required Asset asset,
     required String assetLabel,
+    required this.assetOptions,
+    required bool Function(Asset)? selectAsset,
     required DateTime Function() clock,
     required String Function() newId,
     required PayrollSampler sampler,
@@ -57,7 +65,7 @@ class PayrollFormBloc extends Bloc<PayrollFormEvent, PayrollFormState> {
        _registry = registry,
        _store = store,
        _asset = asset,
-       _assetLabel = assetLabel,
+       _selectAsset = selectAsset,
        _now = clock,
        _newId = newId,
        _sampler = sampler,
@@ -65,9 +73,33 @@ class PayrollFormBloc extends Bloc<PayrollFormEvent, PayrollFormState> {
        super(
          _rolled(
            sampler,
-           PayrollFormState(recipients: [PayrollRecipient(id: newId())]),
+           PayrollFormState(
+             recipients: [PayrollRecipient(id: newId())],
+             assetId: Asset.canonicalForm(asset),
+             assetLabel: assetLabel,
+           ),
          ),
        ) {
+    on<PayrollAssetSelected>((event, emit) {
+      if (state.submitting || event.id == state.assetId) return;
+      final option = assetOptions
+          .where((item) => item.id == event.id)
+          .firstOrNull;
+      if (option == null ||
+          (_selectAsset != null && !_selectAsset(option.asset))) {
+        return;
+      }
+      _asset = option.asset;
+      emit(
+        state.copyWith(
+          assetId: option.id,
+          assetLabel: option.code,
+          step: 0,
+          lastProof: () => null,
+          notice: () => null,
+        ),
+      );
+    });
     on<RecipientAdded>(
       (event, emit) => emit(
         state.copyWith(
@@ -79,6 +111,25 @@ class PayrollFormBloc extends Bloc<PayrollFormEvent, PayrollFormState> {
       ),
     );
     on<RecipientRemoved>(_onRecipientRemoved);
+    on<RosterImported>((event, emit) {
+      if (state.submitting) return;
+      emit(
+        state.copyWith(
+          recipients: [
+            for (final row in event.roster.rows)
+              PayrollRecipient(
+                id: _newId(),
+                employee: row.employee,
+                name: row.name,
+                total: row.total,
+              ),
+          ],
+          cadence: event.roster.cadence,
+          notice: () => null,
+          step: 0,
+        ),
+      );
+    });
     on<RecipientChanged>(_onRecipientChanged);
     on<PayoutCountChanged>(
       (event, emit) =>
@@ -166,8 +217,9 @@ class PayrollFormBloc extends Bloc<PayrollFormEvent, PayrollFormState> {
   final PayrollRepository _payroll;
   final RegistryRepository _registry;
   final ScheduleStore _store;
-  final Asset _asset;
-  final String _assetLabel;
+  Asset _asset;
+  final List<PayrollAssetOption> assetOptions;
+  final bool Function(Asset)? _selectAsset;
   final DateTime Function() _now;
   final String Function() _newId;
 
@@ -207,7 +259,7 @@ class PayrollFormBloc extends Bloc<PayrollFormEvent, PayrollFormState> {
   /// Returns the first validation problem, worded as what to fix.
   String? validate(WalletSession session) {
     if (!session.onTestnet) {
-      return 'Switch Freighter to Testnet, then reconnect.';
+      return 'Switch your wallet to Testnet, then reconnect.';
     }
     final rows = state.recipients;
     if (rows.any((r) => !r.hasValidAddress)) {
@@ -251,13 +303,15 @@ class PayrollFormBloc extends Bloc<PayrollFormEvent, PayrollFormState> {
 
     final rows = state.recipients;
     final payouts = state.payouts;
+    final asset = _asset;
+    final assetLabel = state.assetLabel;
     final cadence = state.cadence;
     final firstUnlock = state.firstPayday(_now());
 
     emit(
       state.copyWith(
         submitting: true,
-        progress: () => 'Confirm in Freighter…',
+        progress: () => 'Confirm in your wallet...',
         notice: () => null,
       ),
     );
@@ -274,7 +328,7 @@ class PayrollFormBloc extends Bloc<PayrollFormEvent, PayrollFormState> {
         payouts: payouts,
         firstUnlock: firstUnlock,
         intervalSeconds: cadence.seconds,
-        asset: _asset,
+        asset: asset,
       );
 
       final createdAt = _now();
@@ -288,7 +342,7 @@ class PayrollFormBloc extends Bloc<PayrollFormEvent, PayrollFormState> {
                 : rows[i].name.trim(),
             total: Amount.string(Amount.tryUnits(rows[i].total)!),
             tranches: payouts,
-            asset: _assetLabel,
+            asset: assetLabel,
             createdAt: createdAt,
             hash: result.hash,
             employer: session.address,
@@ -315,7 +369,7 @@ class PayrollFormBloc extends Bloc<PayrollFormEvent, PayrollFormState> {
             employer: session.address,
             employee: first.employee,
             total: first.total,
-            asset: _assetLabel,
+            asset: assetLabel,
             cadenceSeconds: cadence.seconds,
             claimableBalanceId: first.balanceIds.first,
             payoutTxHash: result.hash,
@@ -346,7 +400,7 @@ class PayrollFormBloc extends Bloc<PayrollFormEvent, PayrollFormState> {
             employeeCount: rows.length,
             payouts: payouts,
             firstUnlock: firstUnlock,
-            asset: _assetLabel,
+            asset: assetLabel,
             registryHash: registryProof?.hash,
             registryContractId: registryProof?.contractId,
           ),

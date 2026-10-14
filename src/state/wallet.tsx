@@ -5,9 +5,9 @@ import { getXlmBalance } from '../lib/stellar'
 import { formatAmount } from './amount'
 import { friendlyError, isNotFound } from './errors'
 import { useToast } from './toast'
+import { Networks } from '@stellar/stellar-sdk'
 
-// Port of WalletBloc: who is connected, through which Freighter, and the
-// pairing URI while the phone app is being linked.
+// Wallet session and the optional mobile pairing request.
 
 export type WalletStatus = 'initial' | 'restoring' | 'disconnected' | 'connecting' | 'connected'
 export type WalletSession = { address: string; network: string; kind: WalletKind; onTestnet: boolean }
@@ -30,7 +30,8 @@ type WalletContextValue = {
 const WalletContext = createContext<WalletContextValue | null>(null)
 
 function toSession(state: wallets.WalletState): WalletSession {
-  return { address: state.address, network: state.network, kind: state.kind, onTestnet: state.network === 'TESTNET' }
+  const onTestnet = state.networkPassphrase ? state.networkPassphrase === Networks.TESTNET : state.network === 'TESTNET'
+  return { address: state.address, network: state.network, kind: state.kind, onTestnet }
 }
 
 export function WalletProvider({ children }: { children: ReactNode }) {
@@ -68,6 +69,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
 
   const connect = useCallback(async (kind: WalletKind) => {
     if (statusRef.current === 'connecting') return
+    pairing.current?.abort()
     const controller = new AbortController()
     pairing.current = controller
     setStatus('connecting')
@@ -75,6 +77,13 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     setPairingUri(null)
     try {
       const connected = toSession(await wallets.connect(kind, { onPairingUri: setPairingUri, signal: controller.signal }))
+      if (controller.signal.aborted) return
+      setSession(connected)
+      setXlmBalance(null)
+      setStatus('connected')
+      setConnectingKind(null)
+      setPairingUri(null)
+      setSheetOpen(false)
       let balance: string | null = null
       let text: string
       try {
@@ -83,12 +92,8 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       } catch (error) {
         text = isNotFound(error) ? "Connected. This wallet isn't funded on Testnet yet." : 'Connected.'
       }
-      setSession(connected)
+      if (controller.signal.aborted) return
       setXlmBalance(balance)
-      setStatus('connected')
-      setConnectingKind(null)
-      setPairingUri(null)
-      setSheetOpen(false)
       toast(text)
     } catch (error) {
       if (controller.signal.aborted) return
@@ -112,6 +117,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const disconnect = useCallback(async () => {
+    pairing.current?.abort()
     await wallets.disconnect()
     setSession(null)
     setXlmBalance(null)

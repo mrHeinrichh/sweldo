@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1120" height="860" viewBox="0 0 1120 860" role="img" aria-labelledby="title desc">
+  <title id="title">Sweldo Week 4: Wallets Kit and local verification</title>
+  <desc id="desc">Freighter and xBull connect through Stellar Wallets Kit. Existing Testnet payroll and conversion transactions are checked, approved in the wallet, and verified before submission. Real receipts and fresh-browser reconstruction feed the verification package. PR 8 collects the source release; the updated deployment and final receipt verification remain pending.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10Z" fill="#555"/></marker>
+    <style>text{font-family:Arial,sans-serif;fill:#161616;font-size:17px}.heading{font-size:30px;font-weight:700}.sub{font-size:15px;fill:#555}.label{font-weight:700}.box{fill:#fff;stroke:#aab3bb;stroke-width:1.5}.check{fill:#edf8f1;stroke:#639e7c;stroke-width:1.5}.pending{fill:#fff8e5;stroke:#b79641;stroke-width:1.5}.arrow{fill:none;stroke:#555;stroke-width:2;marker-end:url(#arrow)}</style>
+  </defs>
+  <rect width="1120" height="860" fill="#fff"/>
+  <text x="40" y="50" class="heading">Sweldo / Week 4</text>
+  <text x="40" y="80" class="sub">Local React and Flutter clients. Test assets only. Shared Kit adapter and matching payroll flows.</text>
+  <rect x="40" y="120" width="300" height="105" rx="6" class="box"/>
+  <text x="60" y="152" class="label">Connect wallet</text><text x="60" y="180">Freighter extension or xBull</text><text x="60" y="206" class="sub">Wallet shares only its public address</text>
+  <path d="M340 173H405" class="arrow"/>
+  <rect x="410" y="120" width="300" height="105" rx="6" class="box"/>
+  <text x="430" y="152" class="label">Stellar Wallets Kit</text><text x="430" y="180">Choose the scoped module</text><text x="430" y="206" class="sub">Existing mobile adapter is preserved</text>
+  <path d="M710 173H775" class="arrow"/>
+  <rect x="780" y="120" width="300" height="105" rx="6" class="box"/>
+  <text x="800" y="152" class="label">Build the existing flow</text><text x="800" y="180">Fund, claim/convert or cancel</text><text x="800" y="206" class="sub">Optional existing Soroban proof</text>
+  <path d="M930 225V275" class="arrow"/>
+  <rect x="780" y="280" width="300" height="105" rx="6" class="check"/>
+  <text x="800" y="312" class="label">Pre-signing checks</text><text x="800" y="340">Expected account + Testnet</text><text x="800" y="366" class="sub">xBull receives explicit passphrase</text>
+  <path d="M780 333H715" class="arrow"/>
+  <rect x="410" y="280" width="300" height="105" rx="6" class="box"/>
+  <text x="430" y="312" class="label">Review and approve</text><text x="430" y="340">Chosen wallet returns signed XDR</text><text x="430" y="366" class="sub">Private keys never enter Sweldo</text>
+  <path d="M410 333H345" class="arrow"/>
+  <rect x="40" y="280" width="300" height="105" rx="6" class="check"/>
+  <text x="60" y="312" class="label">Verify the envelope</text><text x="60" y="340">Same hash + valid signature</text><text x="60" y="366" class="sub">Same connected wallet; no alteration</text>
+  <path d="M190 385V435" class="arrow"/>
+  <text x="204" y="417" class="sub">Valid</text>
+  <rect x="40" y="440" width="300" height="105" rx="6" class="check"/>
+  <text x="60" y="472" class="label">Existing Testnet submission</text><text x="60" y="500">Horizon / Soroban RPC receipt</text><text x="60" y="526" class="sub">Display real Stellar Expert hash</text>
+  <path d="M340 493H405" class="arrow"/>
+  <rect x="410" y="440" width="300" height="105" rx="6" class="box"/>
+  <text x="430" y="472" class="label">Fresh-browser payroll state</text><text x="430" y="500">Read public employer history</text><text x="430" y="526" class="sub">Recover IDs, status and deadlines</text>
+  <path d="M710 493H775" class="arrow"/>
+  <rect x="780" y="440" width="300" height="105" rx="6" class="box"/>
+  <text x="800" y="472" class="label">Local verification package</text><text x="800" y="500">Notes, demo and receipt checklist</text><text x="800" y="526" class="sub">Real approvals need user recording</text>
+  <path d="M190 385V407H370V633H405" class="arrow"/>
+  <rect x="410" y="580" width="300" height="105" rx="6" class="box"/>
+  <text x="430" y="612" class="label">Rejected or mismatched?</text><text x="430" y="640">Stop without submitting</text><text x="430" y="666" class="sub">No invented success or transaction</text>
+  <path d="M930 545V575" class="arrow"/>
+  <rect x="780" y="580" width="300" height="105" rx="6" class="pending"/>
+  <text x="800" y="612" class="label">Release verification</text><text x="800" y="640">Deploy and verify receipts</text><text x="800" y="666" class="sub">PR #8 contains source changes</text>
+  <path d="M40 738H1080" stroke="#d5dadd"/>
+  <text x="40" y="770" class="label">QA is not traction evidence</text>
+  <text x="40" y="800">Record both actual wallet approvals. A ledger hash does not identify the wallet application.</text>
+  <text x="40" y="828" class="sub">Existing Flutter parity requested separately. No mainnet, real funds, new contract, streaming or billing.</text>
+</svg>

@@ -4,6 +4,16 @@ sealed class PayrollFormEvent {
   const PayrollFormEvent();
 }
 
+final class PayrollAssetSelected extends PayrollFormEvent {
+  const PayrollAssetSelected(this.id);
+  final String id;
+}
+
+final class RosterImported extends PayrollFormEvent {
+  const RosterImported(this.roster);
+  final ImportedRoster roster;
+}
+
 final class RecipientAdded extends PayrollFormEvent {
   const RecipientAdded();
 }

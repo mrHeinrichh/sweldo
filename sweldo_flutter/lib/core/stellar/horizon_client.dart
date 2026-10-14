@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 import 'package:stellar_flutter_sdk/stellar_flutter_sdk.dart';
@@ -14,6 +15,31 @@ class HorizonClient {
 
   final StellarSDK sdk;
   final http.Client _http;
+
+  Future<Map<String, dynamic>?> readJson(
+    String path, {
+    bool allowMissing = false,
+  }) async {
+    final base = Uri.parse(StellarNetwork.horizonUrl);
+    final uri = base.resolve(path);
+    if (uri.origin != base.origin) {
+      throw const UserFacingException(
+        'Only Stellar Testnet Horizon reads are supported.',
+      );
+    }
+    final response = await _http.get(uri).timeout(const Duration(seconds: 20));
+    if (allowMissing && response.statusCode == 404) return null;
+    if (response.statusCode != 200) {
+      throw UserFacingException(
+        'Horizon could not load payroll state (${response.statusCode}). Try refreshing.',
+      );
+    }
+    final data = jsonDecode(response.body);
+    if (data is! Map<String, dynamic>) {
+      throw const UserFacingException('Horizon returned invalid payroll data.');
+    }
+    return data;
+  }
 
   Future<AccountResponse> loadAccount(String address) =>
       _guard(() => sdk.accounts.account(address));

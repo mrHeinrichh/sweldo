@@ -11,9 +11,9 @@ type Step = { icon: LucideIcon; title: string; body: string; screen: Screen; fro
 
 const STEPS: Step[] = [
   { icon: UsersRound, title: 'Add your team', body: 'A wallet, a name and the total pay for each person.', screen: 'employer', from: 4.6, to: 6.4 },
-  { icon: PenLine, title: 'Sign once', body: 'Freighter approves one transaction that locks every payout.', screen: 'employer', from: 6.4, to: 10.3 },
+  { icon: PenLine, title: 'Sign once', body: 'Your wallet approves one transaction that locks every payout.', screen: 'employer', from: 6.4, to: 10.3 },
   { icon: Hourglass, title: 'Payday unlocks', body: 'Each payout opens on its payday, to the second.', screen: 'worker', from: 16.9, to: 20.6 },
-  { icon: HandCoins, title: 'Claim in one tap', body: 'The worker approves in Freighter and the pay lands in their wallet.', screen: 'worker', from: 21.3, to: 25.4 },
+  { icon: HandCoins, title: 'Claim in one tap', body: 'The worker approves in their wallet and the pay lands in it.', screen: 'worker', from: 21.3, to: 25.4 },
   { icon: ArrowRightLeft, title: 'Take it in pesos', body: 'Or convert USDC to PHPT in the same transaction.', screen: 'convert', from: 27.0, to: 30.4 },
 ]
 
@@ -194,4 +194,3 @@ function ExtrudedPhone({ screen }: { screen: React.ReactNode }) {
     </div>
   )
 }
-

@@ -46,3 +46,16 @@ app.*.map.json
 
 # Local-only dart-define files (e.g. a WalletConnect project ID)
 config/*.local.json
+
+# Android upload signing credentials
+/android/key.properties
+*.jks
+
+# Generated from the shared website wallet adapter; retain the bridge page.
+/assets/wallet_kit/*
+!/assets/wallet_kit/index.html
+
+# Duplicate copies of local Flutter-generated state.
+/.flutter-plugins-dependencies [0-9]*
+/ios/Flutter/Generated [0-9]*.xcconfig
+/ios/Flutter/flutter_export_environment [0-9]*.sh

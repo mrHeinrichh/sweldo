@@ -121,7 +121,7 @@ class _Intro extends StatelessWidget {
         ),
         const SizedBox(height: SwSpace.md),
         Text(
-          'Runs on Stellar Testnet with test money. Connect Freighter in your '
+          'Runs on Stellar Testnet with test money. Connect a supported wallet in your '
           'browser or on your phone.',
           style: SwType.bodySmall,
         ),

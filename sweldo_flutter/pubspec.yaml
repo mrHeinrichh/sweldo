@@ -29,6 +29,9 @@ dependencies:
   cupertino_icons: ^1.0.9
   lucide_icons_flutter: ^3.1.22
   visibility_detector: ^0.4.0+2
+  csv: 6.0.0
+  file_picker: ^10.3.10
+  flutter_inappwebview: 6.1.5
 
 dev_dependencies:
   flutter_test:
@@ -40,6 +43,8 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  assets:
+    - assets/wallet_kit/
 
   fonts:
     - family: Archivo

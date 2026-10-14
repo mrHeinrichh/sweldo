@@ -1,8 +1,8 @@
 # Sweldo — Flutter app
 
 The Flutter edition of Sweldo: non-custodial payroll on Stellar Testnet for web, iOS and Android.
-It matches the React app feature for feature, uses BLoC for state, and connects to **Freighter**
-through the browser extension (web) and the Freighter mobile app (iOS/Android, over WalletConnect).
+It follows the React payroll workflows, uses BLoC for state, and supports **Freighter and xBull**.
+Web uses the shared Stellar Wallets Kit adapter. Phones use Freighter WalletConnect and an isolated xBull approval window. See the [parity test guide](../docs/flutter-web-parity-demo.md) for exact steps and verification limits.
 
 <p>
   <img src="docs/media/app-icon.png" width="120" alt="Sweldo app icon">
@@ -20,7 +20,9 @@ through the browser extension (web) and the Freighter mobile app (iOS/Android, o
 | Batch payroll: many employees × up to 50 payouts in **one** transaction | ✓ | ✓ |
 | Mutually exclusive employee / employer time predicates | ✓ | ✓ |
 | Soroban Payroll Registry proof (`record_schedule`) | ✓ | ✓ |
-| Recent schedules on this device (`sweldo-schedules-v1`, same JSON) | ✓ | ✓ |
+| Payroll reconstruction from Horizon, balance IDs, claims and cancellation receipts | ✓ | ✓ |
+| CSV/paste roster with preview and exact amount validation | ✓ | ✓ |
+| xBull plus selected-wallet Testnet signature and envelope checks | ✓ | ✓ (real native approvals still require manual QA) |
 | Cancel future payouts, re-checked on the ledger before signing | ✓ | ✓ |
 | Friendbot funding and one-tap trustline | ✓ | ✓ |
 | Employee timeline with live countdowns and claim | ✓ | ✓ |
@@ -41,11 +43,15 @@ Requirements: Flutter 3.41+ (Dart 3.11+). Configuration is passed with `--dart-d
 | `config/week2.json` | Test-USDC payroll with USDC → PHPT claim-and-convert (Week 2 issuers). |
 
 ```bash
+cd ..
+npm run flutter:wallet-kit
+npm run flutter:configure
+cd sweldo_flutter
 flutter pub get
 ```
 
 ```bash
-flutter run -d chrome --dart-define-from-file=config/testnet.json
+flutter run -d chrome --dart-define-from-file=config/testnet.local.json
 ```
 
 ```bash
@@ -75,14 +81,9 @@ form BLoC, and a layout sweep over every quarter second of the story):
 flutter test
 ```
 
-## Freighter compatibility
+## Wallet compatibility
 
-**Web: Freighter browser extension.** `web/index.html` loads the official
-`@stellar/freighter-api` 6.0.1 bundle (vendored in `web/vendor`, Apache-2.0) before Flutter
-starts. `FreighterExtensionConnector` calls it through `dart:js_interop` and uses the same steps as
-the React app's `connectWallet`: detect with retries, `requestAccess`, fall back to
-`setAllowed` + `getAddress`, read the network, then `signTransaction` with the Testnet
-passphrase.
+**Web: Freighter and xBull.** `web/index.html` loads the generated Stellar Wallets Kit bundle before Flutter starts. `KitWalletConnector` calls the same adapter and signing guards used by React through `dart:js_interop`. xBull receives an explicit Testnet passphrase and never silently prompts during startup. The vendored Freighter API remains available to existing installation checks.
 
 **iOS / Android: Freighter mobile app.** `FreighterMobileConnector` pairs over WalletConnect v2
 (Reown Sign) on the `stellar:testnet` chain and signs with `stellar_signXDR`

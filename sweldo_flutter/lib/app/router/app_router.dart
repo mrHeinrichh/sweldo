@@ -30,8 +30,12 @@ enum AppRoute {
   );
 }
 
-GoRouter buildRouter({String initialLocation = '/'}) {
+GoRouter buildRouter({
+  String initialLocation = '/',
+  GlobalKey<NavigatorState>? navigatorKey,
+}) {
   return GoRouter(
+    navigatorKey: navigatorKey,
     initialLocation: initialLocation,
     routes: [
       ShellRoute(

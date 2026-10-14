@@ -2,7 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { claimBalance, getClaimableBalances, getClaimHistory, parseUnlockTime, type BalanceRecord } from '../lib/stellar'
 import type { ConversionReceipt } from '../lib/claim-convert'
 import type { NoticeData } from '../ui/Notice'
-import { formatAmount, tryUnits } from './amount'
+import { formatAmount } from './amount'
 import { explorer } from './config'
 import { friendlyError } from './errors'
 import { useWallet } from './wallet'
@@ -89,7 +89,6 @@ type PayoutsState = {
 
 type PayoutsApi = PayoutsState & {
   openPayouts: Payout[]
-  totalUnits: bigint
   refresh: () => void
   claim: (payout: Payout) => void
   conversionCompleted: (receipt: ConversionReceipt) => void
@@ -203,7 +202,6 @@ export function PayoutsProvider({ children }: { children: ReactNode }) {
     return {
       ...state,
       openPayouts,
-      totalUnits: openPayouts.reduce((sum, payout) => sum + (tryUnits(payout.amount) ?? 0n), 0n),
       refresh,
       claim: (payout) => { void claim(payout) },
       conversionCompleted,

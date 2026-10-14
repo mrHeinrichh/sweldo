@@ -6,13 +6,13 @@ import { useWide } from '../../ui/hooks'
 import { KeyText } from '../../ui/KeyText'
 import { Panel } from '../../ui/Layout'
 import { useTween } from '../../ui/Motion'
+import type { PayoutTotal } from '../../lib/payroll-assets'
 
 /** Connected wallet, total still to come, and a manual refresh. */
-export function WalletOverview({ address, totalUnits, assetLabel, activeCount, loading, onRefresh }: {
-  address: string; totalUnits: bigint; assetLabel: string; activeCount: number; loading: boolean; onRefresh: () => void
+export function WalletOverview({ address, totals, activeCount, loading, onRefresh }: {
+  address: string; totals: PayoutTotal[]; activeCount: number; loading: boolean; onRefresh: () => void
 }) {
   const wide = useWide()
-  const total = useTween(Number(amountString(totalUnits)), 480, easeOutCubic)
   const wallet = (
     <div className="overview-cell">
       <span className="t-caption">Connected wallet</span>
@@ -22,7 +22,7 @@ export function WalletOverview({ address, totalUnits, assetLabel, activeCount, l
   const totalCell = (
     <div className="overview-cell">
       <span className="t-caption">Locked and claimable</span>
-      <span className="overview-figure"><span className="t-amount-lg">{formatAmount(total)}</span><span className="t-label t-muted"> {assetLabel}</span></span>
+      {(totals.length ? totals : [{ asset: 'native', assetCode: 'XLM', units: 0n }]).map((total) => <TotalFigure key={total.asset} total={total} />)}
     </div>
   )
   const count = (
@@ -46,4 +46,9 @@ export function WalletOverview({ address, totalUnits, assetLabel, activeCount, l
         )}
     </Panel>
   )
+}
+
+function TotalFigure({ total }: { total: PayoutTotal }) {
+  const amount = useTween(Number(amountString(total.units)), 480, easeOutCubic)
+  return <span className="overview-figure" title={total.asset}><span className="t-amount-lg">{formatAmount(amount)}</span><span className="t-label t-muted"> {total.assetCode}</span></span>
 }

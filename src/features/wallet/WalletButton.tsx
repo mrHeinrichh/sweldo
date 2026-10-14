@@ -3,6 +3,7 @@ import { ArrowUpRight, ChevronDown, Copy, LogOut, Wallet } from 'lucide-react'
 import { explorer } from '../../state/config'
 import { useToast } from '../../state/toast'
 import { useWallet } from '../../state/wallet'
+import { WALLET_KINDS } from '../../lib/wallets'
 import { Button } from '../../ui/Button'
 import { shortKey } from '../../ui/format'
 import { useWide } from '../../ui/hooks'
@@ -56,6 +57,7 @@ export function WalletButton() {
       </button>
       {menuOpen && (
         <div className="wallet-menu" role="menu">
+          <p className="wallet-menu-label t-caption">{WALLET_KINDS[session.kind].title} / {session.onTestnet ? 'Testnet' : session.network}</p>
           <button type="button" role="menuitem" onClick={async () => {
             setMenuOpen(false)
             try { await navigator.clipboard.writeText(session.address); toast('Address copied.') } catch { toast('Copy is unavailable here. Select the text instead.') }

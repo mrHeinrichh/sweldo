@@ -1,6 +1,7 @@
 import { currentAccount, signXdr } from './wallets'
 import { Horizon, Networks, TransactionBuilder } from '@stellar/stellar-sdk'
 import { prepareClaimConversion, type ConversionQuote, type ConversionReceipt } from './claim-convert.ts'
+import { requireTestnetAccount } from './wallets/signing'
 
 export class SubmissionUncertain extends Error {
   transactionHash: string
@@ -12,8 +13,7 @@ export class SubmissionUncertain extends Error {
 
 export async function claimAndConvert(server: Horizon.Server, quote: ConversionQuote): Promise<ConversionReceipt> {
   const account = await currentAccount()
-  if (account.network !== 'TESTNET' && account.networkPassphrase !== Networks.TESTNET) throw new Error('Switch Freighter to Testnet before signing.')
-  if (account.address !== quote.address) throw new Error('The selected Freighter account changed. Reconnect the worker wallet.')
+  requireTestnetAccount(account, quote.address)
   const transaction = await prepareClaimConversion(server, quote)
   const signed = await signXdr(transaction.toXDR(), quote.address, Networks.TESTNET)
   const signedTransaction = TransactionBuilder.fromXDR(signed, Networks.TESTNET)

@@ -1,6 +1,6 @@
 import '../domain/wallet_session.dart';
 
-/// One way of talking to a Freighter wallet.
+/// One supported wallet transport.
 abstract class WalletConnector {
   WalletKind get kind;
 

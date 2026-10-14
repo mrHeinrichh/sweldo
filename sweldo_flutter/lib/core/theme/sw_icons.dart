@@ -40,6 +40,8 @@ abstract final class SwIcons {
 
   // Actions
   static const IconData add = LucideIcons.plus;
+  static const IconData importFile = LucideIcons.fileUp;
+  static const IconData browser = LucideIcons.globe;
   static const IconData remove = LucideIcons.minus;
   static const IconData close = LucideIcons.x;
   static const IconData check = LucideIcons.check;

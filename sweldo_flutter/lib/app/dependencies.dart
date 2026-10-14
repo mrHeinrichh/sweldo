@@ -3,13 +3,15 @@ import '../core/storage/local_store.dart';
 import '../core/stellar/horizon_client.dart';
 import '../core/stellar/transaction_signer.dart';
 import '../features/account/data/account_repository.dart';
+import '../features/account/data/local_test_faucet.dart';
 import '../features/conversion/data/conversion_repository.dart';
 import '../features/payouts/data/claim_history_store.dart';
 import '../features/payouts/data/payouts_repository.dart';
 import '../features/payroll/data/payroll_repository.dart';
 import '../features/payroll/data/registry_repository.dart';
 import '../features/payroll/data/schedule_store.dart';
-import '../features/wallet/data/freighter/freighter_extension_connector.dart';
+import '../features/wallet/data/kit/kit_wallet_connector.dart';
+import '../features/wallet/domain/wallet_session.dart';
 import '../features/wallet/data/walletconnect/freighter_mobile_connector.dart';
 import '../features/wallet/data/wallet_repository.dart';
 
@@ -35,7 +37,8 @@ class AppDependencies {
     final wallet = WalletRepository(
       store: store,
       connectors: [
-        FreighterExtensionConnector(),
+        KitWalletConnector(WalletKind.freighterExtension),
+        KitWalletConnector(WalletKind.xbull),
         FreighterMobileConnector(projectId: config.walletConnectProjectId),
       ],
     );
@@ -44,7 +47,14 @@ class AppDependencies {
       config: config,
       horizon: horizon,
       wallet: wallet,
-      account: AccountRepository(horizon, submitter),
+      account: AccountRepository(
+        horizon,
+        submitter,
+        testFaucet: LocalTestFaucet(
+          url: config.testFaucetUrl,
+          issuer: config.assetIssuer,
+        ),
+      ),
       payroll: PayrollRepository(horizon, submitter),
       registry: RegistryRepository(
         contractId: config.registryContractId,

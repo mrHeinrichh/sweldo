@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../app/shell/page_frame.dart';
+import '../../../app/dependencies.dart';
 import '../../../core/config/app_config.dart';
 import '../../../core/motion/effects.dart';
 import '../../../core/motion/tilt.dart';
@@ -95,7 +96,7 @@ class _ConnectPrompt extends StatelessWidget {
               ),
               const SizedBox(height: SwSpace.sm),
               Text(
-                'Use the Freighter wallet your employer added to the payroll. '
+                'Use the wallet your employer added to the payroll. '
                 'Your payouts are read straight from the Stellar ledger.',
                 style: SwType.bodySmall,
                 textAlign: TextAlign.center,
@@ -104,7 +105,7 @@ class _ConnectPrompt extends StatelessWidget {
               TourTarget(
                 id: 'connect-pay',
                 child: SwButton(
-                  label: 'Connect Freighter',
+                  label: 'Connect wallet',
                   icon: SwIcons.wallet,
                   large: true,
                   onPressed: () => showConnectWalletSheet(context),
@@ -117,7 +118,7 @@ class _ConnectPrompt extends StatelessWidget {
                 runSpacing: SwSpace.xs,
                 children: const [
                   _Hint(icon: SwIcons.extension, text: 'Browser extension'),
-                  _Hint(icon: SwIcons.phone, text: 'Freighter app'),
+                  _Hint(icon: SwIcons.phone, text: 'Freighter or xBull'),
                 ],
               ),
             ],
@@ -199,15 +200,23 @@ class _PayView extends StatelessWidget {
     final bloc = context.read<PayoutsBloc>();
     final pair = config.conversionPair;
     final open = state.openPayouts;
-    final assetLabel = open.isEmpty ? config.assetLabel : open.first.assetCode;
+    final options = config.payrollAssets;
+    final receiveAsset =
+        options
+            .where(
+              (option) =>
+                  option.id != 'native' &&
+                  open.any((payout) => payout.asset == option.id),
+            )
+            .firstOrNull ??
+        options.first;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         WalletOverview(
           address: address,
-          totalUnits: state.totalUnits,
-          assetLabel: assetLabel,
+          totals: state.totalsByAsset,
           activeCount: open.length,
           loading: state.loading,
           onRefresh: () => bloc.add(const PayoutsRefreshRequested()),
@@ -228,10 +237,22 @@ class _PayView extends StatelessWidget {
                   child: ConversionReceiptCard(receipt: state.receipt!),
                 ),
         ),
-        const AccountSetupPrompts(
-          trustlineMessage:
-              'Add a trustline so this wallet can receive the payroll asset '
-              'before you claim.',
+        BlocProvider(
+          key: ValueKey('receive:${receiveAsset.id}'),
+          create: (context) {
+            final deps = context.read<AppDependencies>();
+            return AccountSetupCubit(
+              repository: deps.account,
+              wallet: deps.wallet,
+              payrollAsset: receiveAsset.asset,
+            );
+          },
+          child: const AccountSetupPrompts(
+            showTestUsdcFunding: false,
+            trustlineMessage:
+                'Add a trustline so this wallet can receive the payroll asset '
+                'before you claim.',
+          ),
         ),
         const SizedBox(height: SwSpace.md),
         SectionHeading(

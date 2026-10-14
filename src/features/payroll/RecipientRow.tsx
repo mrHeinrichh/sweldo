@@ -1,5 +1,7 @@
-import { forwardRef, useEffect, useRef, useState, type ReactNode } from 'react'
-import { CalendarClock, Check, CircleAlert, Coins, KeyRound, UserRound, X } from 'lucide-react'
+import { forwardRef, useEffect, useId, useRef, useState, type ReactNode } from 'react'
+import { CalendarClock, Check, ChevronDown, CircleAlert, Coins, KeyRound, UserRound, X } from 'lucide-react'
+import { useAccount } from '../../state/account'
+import { payrollAssets } from '../../state/config'
 import { formatAmount, tryUnits } from '../../state/amount'
 import { hasValidAddress, OWN_WALLET_MESSAGE, usePayrollForm, type PayrollRecipient } from '../../state/payroll-form'
 import { useWallet } from '../../state/wallet'
@@ -15,6 +17,8 @@ export function RecipientRow({ recipient, index, assetLabel, removable, animateI
   const showErrors = teamChecks > 0
   const { session } = useWallet()
   const form = usePayrollForm()
+  const account = useAccount()
+  const totalId = useId()
   const payouts = form.state.payouts
   const [addressTouched, setAddressTouched] = useState(false)
   const [totalTouched, setTotalTouched] = useState(false)
@@ -83,9 +87,11 @@ export function RecipientRow({ recipient, index, assetLabel, removable, animateI
     </Field>
   )
   const totalField = (
-    <Field label="Total pay">
-      <InputBox ref={totalBox} icon={<Coins size={18} />} suffix={assetLabel} error={!!totalError}>
+    <div className="field">
+      <label className="field-label t-label" htmlFor={totalId}>Total pay</label>
+      <InputBox ref={totalBox} icon={<Coins size={18} />} error={!!totalError}>
         <input
+          id={totalId}
           className="figures-input"
           value={recipient.total}
           inputMode="decimal"
@@ -95,9 +101,17 @@ export function RecipientRow({ recipient, index, assetLabel, removable, animateI
           onBlur={() => setTotalTouched(true)}
           onChange={(event) => change({ total: event.target.value.replace(/[^0-9.,]/g, '') })}
         />
+        <span className="amount-asset-selector" title="Payroll asset for all employees (Testnet)">
+          <select aria-label={`Payroll asset for all employees, row ${index + 1}`} value={account.assetId}
+            disabled={disabled || account.funding || account.enabling || account.fundingAsset}
+            onChange={(event) => form.selectAsset(event.target.value)}>
+            {payrollAssets.map((option) => <option key={option.id} value={option.id}>{option.asset.getCode()}</option>)}
+          </select>
+          <ChevronDown size={14} aria-hidden="true" />
+        </span>
       </InputBox>
       {totalError && <p className="field-error">{totalError}</p>}
-    </Field>
+    </div>
   )
   const splitText = perPayout === '0'
     ? 'Enter an amount to split'

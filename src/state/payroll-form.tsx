@@ -6,7 +6,8 @@ import type { RosterImport } from '../lib/roster-import'
 import type { NoticeData } from '../ui/Notice'
 import { plural } from '../ui/format'
 import { amountString, perPayout, tryUnits } from './amount'
-import { assetLabel, explorer, hasRegistry, MAX_OPERATIONS, MAX_PAYOUTS_PER_EMPLOYEE, payrollAsset } from './config'
+import { explorer, hasRegistry, MAX_OPERATIONS, MAX_PAYOUTS_PER_EMPLOYEE } from './config'
+import { useAccount } from './account'
 import { friendlyError } from './errors'
 import { prependSchedules, type PayrollSchedule } from './schedules-store'
 import { useWallet, type WalletSession } from './wallet'
@@ -57,6 +58,8 @@ export type ScheduleChange = { cadence?: Cadence; payouts?: number; firstPaydayI
 
 type PayrollFormApi = {
   state: PayrollFormState
+  assetLabel: string
+  selectAsset: (id: string) => void
   capacity: number
   balanceCount: number
   overOperationLimit: boolean
@@ -122,6 +125,8 @@ const PayrollFormContext = createContext<PayrollFormApi | null>(null)
 
 export function PayrollFormProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState(initialState)
+  const { asset, assetCode, assetId, selectAsset: selectAccountAsset } = useAccount()
+  const submitting = useRef(false)
   // The connected wallet pays; an employee using it would be paying themselves.
   const { session } = useWallet()
   const employer = session?.address ?? null
@@ -141,7 +146,7 @@ export function PayrollFormProvider({ children }: { children: ReactNode }) {
 
   const validate = useCallback((session: WalletSession): string | null => {
     const current = stateRef.current
-    if (!session.onTestnet) return 'Switch Freighter to Testnet, then reconnect.'
+    if (!session.onTestnet) return 'Switch your wallet to Testnet, then reconnect.'
     const rows = current.recipients
     if (rows.some((row) => !hasValidAddress(row))) {
       return 'Every employee needs a valid 56-character Stellar public key (starts with G).'
@@ -161,17 +166,20 @@ export function PayrollFormProvider({ children }: { children: ReactNode }) {
 
   const submit = useCallback(async (session: WalletSession) => {
     const current = stateRef.current
-    if (current.submitting) return
+    if (submitting.current) return
     const problem = validate(session)
     if (problem) {
       update((previous) => ({ ...previous, notice: { tone: 'error', text: problem } }))
       return
     }
     const rows = current.recipients
+    const payrollAsset = asset
+    const assetLabel = payrollAsset.getCode()
     const { payouts, cadence } = current
     const firstUnlock = firstPayday(new Date(), cadence, current.firstPaydayIn, current.firstPaydayAt)
     const totalLocked = rows.reduce((sum, row) => sum + (tryUnits(row.total) ?? 0n), 0n)
-    update((previous) => ({ ...previous, submitting: true, progress: 'Confirm in Freighter…', notice: null }))
+    submitting.current = true
+    update((previous) => ({ ...previous, submitting: true, progress: 'Confirm in your wallet…', notice: null }))
     try {
       const result = await createBatchSchedule({
         employer: session.address,
@@ -246,13 +254,20 @@ export function PayrollFormProvider({ children }: { children: ReactNode }) {
       }))
     } catch (error) {
       update((previous) => ({ ...previous, submitting: false, progress: null, notice: { tone: 'error', text: friendlyError(error) } }))
+    } finally {
+      submitting.current = false
     }
-  }, [update, validate])
+  }, [update, validate, asset])
 
   const api = useMemo<PayrollFormApi>(() => {
     const balanceCount = state.recipients.length * state.payouts
     return {
       state,
+      assetLabel: assetCode,
+      selectAsset: (id) => {
+        if (submitting.current || id === assetId || !selectAccountAsset(id)) return
+        update((previous) => ({ ...previous, step: 0, notice: null, lastProof: null }))
+      },
       capacity: capacity(state.recipients.length),
       balanceCount,
       overOperationLimit: balanceCount > MAX_OPERATIONS,
@@ -307,7 +322,7 @@ export function PayrollFormProvider({ children }: { children: ReactNode }) {
       dismissNotice: () => update((previous) => ({ ...previous, notice: null })),
       submit: (session) => { void submit(session) },
     }
-  }, [state, amountPerPayout, update, submit, employer])
+  }, [state, amountPerPayout, update, submit, employer, assetCode, assetId, selectAccountAsset])
 
   return <PayrollFormContext.Provider value={api}>{children}</PayrollFormContext.Provider>
 }

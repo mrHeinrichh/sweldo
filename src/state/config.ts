@@ -1,5 +1,5 @@
-import { Asset } from '@stellar/stellar-sdk'
 import { configuredConversion } from '../lib/claim-convert'
+import { payrollAssetOptions } from '../lib/payroll-assets'
 
 // Build-time configuration (VITE_*), the same switches as the Flutter
 // app's --dart-define values. Leave the asset blank for the XLM demo.
@@ -12,9 +12,8 @@ export const config = {
   registryContractId: env.VITE_PAYROLL_REGISTRY_CONTRACT_ID?.trim() ?? '',
 }
 
-export const usesIssuedAsset = config.assetCode.length > 0 && config.assetIssuer.length > 0
-export const payrollAsset = usesIssuedAsset ? new Asset(config.assetCode, config.assetIssuer) : Asset.native()
-export const assetLabel = usesIssuedAsset ? config.assetCode : 'XLM'
+export const payrollAssets = payrollAssetOptions(config.assetCode, config.assetIssuer)
+export const assetLabel = 'XLM'
 export const hasRegistry = config.registryContractId.length > 0
 export const conversionPair = configuredConversion(env)
 

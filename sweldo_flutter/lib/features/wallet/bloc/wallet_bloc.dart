@@ -25,9 +25,11 @@ class WalletBloc extends Bloc<WalletEvent, WalletState> {
     on<WalletDisconnectRequested>(_onDisconnectRequested);
     on<WalletPairingDismissed>(_onPairingDismissed);
     on<_WalletSessionChanged>(_onSessionChanged);
-    on<_WalletPairingUriReceived>(
-      (event, emit) => emit(state.copyWith(pairingUri: () => event.uri)),
-    );
+    on<_WalletPairingUriReceived>((event, emit) {
+      if (state.status == WalletStatus.connecting) {
+        emit(state.copyWith(pairingUri: () => event.uri));
+      }
+    });
     _subscription = _repository.sessions.listen(
       (s) => add(_WalletSessionChanged(s)),
     );
@@ -56,11 +58,13 @@ class WalletBloc extends Bloc<WalletEvent, WalletState> {
     emit(state.copyWith(status: WalletStatus.restoring));
     try {
       final session = await _repository.restore();
-      if (session == null) {
+      if (session == null && state.status == WalletStatus.restoring) {
         emit(state.copyWith(status: WalletStatus.disconnected));
       }
     } catch (_) {
-      emit(state.copyWith(status: WalletStatus.disconnected));
+      if (state.status == WalletStatus.restoring) {
+        emit(state.copyWith(status: WalletStatus.disconnected));
+      }
     }
   }
 
@@ -81,6 +85,18 @@ class WalletBloc extends Bloc<WalletEvent, WalletState> {
         event.kind,
         onPairingUri: (uri) => add(_WalletPairingUriReceived(uri)),
       );
+      if (_repository.session != session ||
+          state.status != WalletStatus.connecting) {
+        return;
+      }
+      emit(
+        state.copyWith(
+          status: WalletStatus.connected,
+          session: () => session,
+          connectingKind: () => null,
+          pairingUri: () => null,
+        ),
+      );
       String? balance;
       String text;
       try {
@@ -91,6 +107,7 @@ class WalletBloc extends Bloc<WalletEvent, WalletState> {
             ? "Connected. This wallet isn't funded on Testnet yet."
             : 'Connected.';
       }
+      if (_repository.session != session || state.session != session) return;
       emit(
         state.copyWith(
           status: WalletStatus.connected,
@@ -125,6 +142,7 @@ class WalletBloc extends Bloc<WalletEvent, WalletState> {
     Emitter<WalletState> emit,
   ) {
     if (state.status != WalletStatus.connecting) return;
+    _repository.cancelPendingConnection();
     emit(
       state.copyWith(
         status: state.session == null
@@ -166,6 +184,7 @@ class WalletBloc extends Bloc<WalletEvent, WalletState> {
     );
     try {
       final balance = await _horizon.xlmBalance(session.address);
+      if (_repository.session != session || state.session != session) return;
       emit(state.copyWith(xlmBalance: () => balance));
     } catch (_) {
       // Unfunded wallets are handled by the funding prompt.

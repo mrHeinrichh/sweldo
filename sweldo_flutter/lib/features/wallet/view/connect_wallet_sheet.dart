@@ -117,10 +117,10 @@ class _WalletChoices extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Phones can only use the Freighter app; elsewhere, lead with what
-    // works on this device.
     final ordered = FreighterLinks.onPhone
-        ? connectors.where((c) => c.kind == WalletKind.freighterMobile).toList()
+        ? connectors
+              .where((c) => c.kind != WalletKind.freighterExtension)
+              .toList()
         : ([...connectors]..sort((a, b) {
             int rank(WalletConnector c) => c.isAvailable ? 0 : 1;
             return rank(a).compareTo(rank(b));
@@ -129,10 +129,10 @@ class _WalletChoices extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text('Connect Freighter', style: SwType.title),
+        Text('Connect wallet', style: SwType.title),
         const SizedBox(height: SwSpace.sm),
         Text(
-          'Freighter signs each transaction after you review it. Sweldo never '
+          'Your wallet signs each transaction after you review it. Sweldo never '
           'sees your keys.',
           style: SwType.bodySmall,
         ),
@@ -147,6 +147,12 @@ class _WalletChoices extends StatelessWidget {
           ),
           const SizedBox(height: SwSpace.md),
         ],
+        if (state.status == WalletStatus.connecting)
+          SwButton(
+            label: 'Cancel connection',
+            onPressed: () =>
+                context.read<WalletBloc>().add(const WalletPairingDismissed()),
+          ),
         // Only offer the store when Freighter is known to be missing.
         _FreighterInstalled(
           builder: (context, installed) => installed == false
@@ -233,6 +239,8 @@ class _WalletOption extends StatelessWidget {
     final kind = connector.kind;
     final icon = kind == WalletKind.freighterExtension
         ? SwIcons.extension
+        : kind == WalletKind.xbull
+        ? SwIcons.browser
         : SwIcons.phone;
     final duration = SwMotion.of(context, const Duration(milliseconds: 200));
     return Interactive(
