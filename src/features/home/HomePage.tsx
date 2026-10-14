@@ -44,7 +44,7 @@ function Intro({ wide }: { wide: boolean }) {
       <div className="home-story-link">
         <Button label="Watch the 36-second story" icon={<CirclePlay />} tone="quiet" onClick={() => navigate('/story')} />
       </div>
-      <p className="t-body-sm m0 home-note">Runs on Stellar Testnet with test money. Connect Freighter in your browser or on your phone.</p>
+      <p className="t-body-sm m0 home-note">Runs on Stellar Testnet with test money. Connect Freighter or xBull.</p>
     </div>
   )
 }

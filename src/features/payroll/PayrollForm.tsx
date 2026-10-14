@@ -3,7 +3,6 @@ import { createPortal } from 'react-dom'
 import { ArrowLeft, ArrowRight, CircleAlert, KeyRound, LockKeyhole, Plus, RotateCcw, ShieldCheck, TriangleAlert, Undo2, Wallet } from 'lucide-react'
 import { useAccount } from '../../state/account'
 import { formatAmount, formatUnits } from '../../state/amount'
-import { assetLabel } from '../../state/config'
 import { hasValidAddress, usePayrollForm, type PayrollStep } from '../../state/payroll-form'
 import { useWallet } from '../../state/wallet'
 import { Button } from '../../ui/Button'
@@ -23,7 +22,7 @@ import { RosterImport } from './RosterImport'
 const STEPS: { title: string; description: string; next?: string }[] = [
   { title: 'Who are you paying?', description: 'Add each person with their Stellar wallet and the total to pay them.', next: 'Continue to schedule' },
   { title: 'When do they get paid?', description: 'Choose how often pay unlocks, how many times, and when it starts.', next: 'Continue to review' },
-  { title: 'Review and lock', description: 'Check the plan, then sign once in Freighter to lock every payout.' },
+  { title: 'Review and lock', description: 'Check the plan, then sign in your wallet to lock every payout.' },
 ]
 
 /**
@@ -33,6 +32,7 @@ const STEPS: { title: string; description: string; next?: string }[] = [
 export function PayrollForm() {
   const form = usePayrollForm()
   const account = useAccount()
+  const assetLabel = form.assetLabel
   const { state } = form
   const step = state.step
   const reduced = useReducedMotion()
@@ -128,6 +128,7 @@ function WizardActions({ children }: { children: ReactNode }) {
 
 function TeamStep({ initialIds }: { initialIds: Set<string> }) {
   const form = usePayrollForm()
+  const assetLabel = form.assetLabel
   const { state } = form
   const sm = useUp('sm')
   const count = state.recipients.length
@@ -161,6 +162,7 @@ function TeamStep({ initialIds }: { initialIds: Set<string> }) {
 /** The plan as a printed pay summary, then the checks, then the policy. */
 function ReviewStep({ onFix }: { onFix: (step: PayrollStep) => void }) {
   const form = usePayrollForm()
+  const assetLabel = form.assetLabel
   const { session } = useWallet()
   const { state, problems } = form
   const people = state.recipients.length

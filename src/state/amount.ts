@@ -1,4 +1,4 @@
-import { amountString, amountUnits } from '../lib/claim-convert'
+import { amountString, amountUnits } from '../lib/claim-convert.ts'
 
 // Exact Stellar amount arithmetic in stroops, as in the Flutter `Amount`.
 

@@ -25,6 +25,7 @@
   border: 0; background: none; color: var(--ink); font: 600 14px/1.3 var(--font); text-decoration: none; cursor: pointer; text-align: left;
 }
 .wallet-menu svg { color: var(--ink-muted); }
+.wallet-menu-label { margin: 4px 16px 8px; }
 .wallet-menu button:hover, .wallet-menu a:hover { background: rgba(20, 33, 58, .05); }
 
 /* Connect sheet */

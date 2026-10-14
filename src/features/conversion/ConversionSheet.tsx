@@ -102,7 +102,7 @@ function ConversionContent({ address, payout, pair, onClose, onReceipt }: {
       <div className="conversion-actions">
         <Button label="Refresh quote" icon={<RefreshCw />} tone="secondary" disabled={state.loading || state.signing || locked} onClick={() => void requestQuote()} />
         <Button
-          label={state.signing ? 'Confirm in Freighter…' : 'Claim and convert'}
+          label={state.signing ? 'Confirm in your wallet…' : 'Claim and convert'}
           icon={<ArrowRightLeft />}
           loading={state.signing}
           disabled={!quote || expired || state.loading || locked}

@@ -1,8 +1,8 @@
-export type WalletKind = 'freighter-extension' | 'freighter-mobile'
+export type WalletKind = 'freighter-extension' | 'freighter-mobile' | 'xbull'
 
 export type WalletAccount = {
   address: string
-  /** Freighter's network name: TESTNET or PUBLIC. */
+  /** Reported network, or the explicitly requested Testnet network for xBull. */
   network: string
   networkPassphrase?: string
 }

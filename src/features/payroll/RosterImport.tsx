@@ -1,7 +1,6 @@
 import { useRef, useState } from 'react'
 import { FileUp, Upload, X } from 'lucide-react'
 import { parseRoster, type RosterImport as ImportedRoster } from '../../lib/roster-import'
-import { assetLabel } from '../../state/config'
 import { usePayrollForm } from '../../state/payroll-form'
 import { Button, IconButton } from '../../ui/Button'
 import { KeyText } from '../../ui/KeyText'
@@ -9,6 +8,7 @@ import { Sheet } from '../../ui/Sheet'
 
 export function RosterImport() {
   const form = usePayrollForm()
+  const assetLabel = form.assetLabel
   const [open, setOpen] = useState(false)
   const [text, setText] = useState('')
   const [preview, setPreview] = useState<ImportedRoster | null>(null)

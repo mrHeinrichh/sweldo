@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import QRCode from 'qrcode'
-import { ChevronRight, Copy, LoaderCircle, Puzzle, Smartphone, SquareArrowOutUpRight } from 'lucide-react'
+import { ChevronRight, Copy, Globe, LoaderCircle, Puzzle, Smartphone, SquareArrowOutUpRight, X } from 'lucide-react'
 import { freighterStoreName, freighterStoreUrl, isMobileBrowser, openFreighter, unavailableReason, WALLET_KINDS, type WalletKind } from '../../lib/wallets'
 import { useToast } from '../../state/toast'
 import { useWallet } from '../../state/wallet'
@@ -13,7 +13,7 @@ import './wallet.css'
 export function ConnectWalletSheet() {
   const wallet = useWallet()
   return (
-    <Sheet open={wallet.sheetOpen} onClose={wallet.closeSheet} label="Connect Freighter">
+    <Sheet open={wallet.sheetOpen} onClose={wallet.closeSheet} label="Connect wallet">
       <div className="connect-content">
         {wallet.pairingUri
           ? <PairingView key={wallet.pairingUri} uri={wallet.pairingUri} />
@@ -25,15 +25,14 @@ export function ConnectWalletSheet() {
 
 function WalletChoices() {
   const wallet = useWallet()
-  // Phones can only use the Freighter app; computers lead with what works here.
   const kinds: WalletKind[] = isMobileBrowser()
-    ? ['freighter-mobile']
-    : (['freighter-extension', 'freighter-mobile'] as WalletKind[])
+    ? ['xbull', 'freighter-mobile']
+    : (['freighter-extension', 'xbull', 'freighter-mobile'] as WalletKind[])
       .sort((a, b) => Number(unavailableReason(a) !== null) - Number(unavailableReason(b) !== null))
   return (
     <div className="connect-view">
-      <h2 className="t-title m0">Connect Freighter</h2>
-      <p className="t-body-sm m0 connect-lede">Freighter signs each transaction after you review it. Sweldo never sees your keys.</p>
+      <h2 className="t-title m0">Connect wallet</h2>
+      <p className="t-body-sm m0 connect-lede">Your wallet signs each transaction after you review it. Sweldo never sees your keys.</p>
       <div className="connect-options">
         {kinds.map((kind) => {
           const reason = unavailableReason(kind)
@@ -47,7 +46,7 @@ function WalletChoices() {
               disabled={!enabled}
               onClick={() => wallet.connect(kind)}
             >
-              <span className="connect-option-icon">{kind === 'freighter-extension' ? <Puzzle size={20} /> : <Smartphone size={20} />}</span>
+              <span className="connect-option-icon">{kind === 'freighter-extension' ? <Puzzle size={20} /> : kind === 'xbull' ? <Globe size={20} /> : <Smartphone size={20} />}</span>
               <span className="connect-option-text">
                 <span className="t-subtitle">{WALLET_KINDS[kind].title}</span>
                 <span className="t-body-sm">{reason ?? WALLET_KINDS[kind].description}</span>
@@ -59,8 +58,10 @@ function WalletChoices() {
           )
         })}
       </div>
+      {wallet.status === 'connecting' && <Button label="Cancel connection" icon={<X />} tone="secondary" onClick={wallet.dismissPairing} />}
       <p className="t-body-sm m0 connect-get">
-        Don't have Freighter? <ExternalLink href={freighterStoreUrl()} label={`Get it on ${freighterStoreName()}`} className="connect-get-link" />
+        <ExternalLink href={freighterStoreUrl()} label={`Get Freighter on ${freighterStoreName()}`} className="connect-get-link" />
+        <ExternalLink href="https://xbull.app" label="Get xBull" className="connect-get-link" />
       </p>
     </div>
   )

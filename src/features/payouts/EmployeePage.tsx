@@ -2,7 +2,9 @@ import { useState } from 'react'
 import { Puzzle, RefreshCw, Smartphone, Wallet } from 'lucide-react'
 import { PageFrame } from '../../app/Shell'
 import { supportsConversion } from '../../lib/claim-convert'
-import { assetLabel as configAssetLabel, conversionPair } from '../../state/config'
+import { assetLabel as configAssetLabel, conversionPair, payrollAssets } from '../../state/config'
+import { AccountProvider } from '../../state/account'
+import { payoutTotals } from '../../lib/payroll-assets'
 import { unlockTimeFor, usePayouts, type Payout } from '../../state/payouts'
 import { useWallet } from '../../state/wallet'
 import { Button } from '../../ui/Button'
@@ -44,10 +46,10 @@ function ConnectPrompt() {
         </Tilt3D>
         <h2 className="t-title m0 t-center" style={{ marginTop: 'var(--s-xl)' }}>Connect to see your pay</h2>
         <p className="t-body-sm m0 t-center" style={{ marginTop: 'var(--s-sm)' }}>
-          Use the Freighter wallet your employer added to the payroll. Your payouts are read straight from the Stellar ledger.
+          Use the wallet your employer added to the payroll. Your payouts are read straight from the Stellar ledger.
         </p>
         <div data-tour="connect-pay" style={{ marginTop: 'var(--s-xl)' }}>
-          <Button label="Connect Freighter" icon={<Wallet />} large onClick={wallet.openSheet} />
+          <Button label="Connect wallet" icon={<Wallet />} large onClick={wallet.openSheet} />
         </div>
         <div className="connect-hints">
           <span><Puzzle size={14} /><span className="t-caption">Browser extension</span></span>
@@ -62,17 +64,19 @@ function PayView({ address }: { address: string }) {
   const payouts = usePayouts()
   const [converting, setConverting] = useState<Payout | null>(null)
   const open = payouts.openPayouts
-  const assetLabel = open.length === 0 ? configAssetLabel : open[0].assetCode
+  const receiveAsset = payrollAssets.find((option) => option.id !== 'native' && open.some((payout) => payout.asset === option.id))?.asset ?? payrollAssets[0].asset
 
   return (
     <div className="pay-view">
-      <WalletOverview address={address} totalUnits={payouts.totalUnits} assetLabel={assetLabel} activeCount={open.length} loading={payouts.loading} onRefresh={payouts.refresh} />
+      <WalletOverview address={address} totals={payoutTotals(open)} activeCount={open.length} loading={payouts.loading} onRefresh={payouts.refresh} />
       <div style={{ height: 'var(--s-lg)' }} />
       <AnimatedNotice data={payouts.notice} />
       <Collapse open={payouts.receipt !== null}>
         {payouts.receipt && <div style={{ paddingBottom: 'var(--s-lg)' }}><ConversionReceiptCard receipt={payouts.receipt} /></div>}
       </Collapse>
-      <AccountSetupPrompts trustlineMessage="Add a trustline so this wallet can receive the payroll asset before you claim." />
+      <AccountProvider assetOverride={receiveAsset}>
+        <AccountSetupPrompts showTestUsdcFunding={false} trustlineMessage="Add a trustline so this wallet can receive the payroll asset before you claim." />
+      </AccountProvider>
       <div style={{ height: 'var(--s-md)' }} />
       <SectionHeading title="Pay schedule" description="Payouts addressed to your wallet, soonest first." trailing={<span className="t-caption">{payouts.payouts.length} on the ledger</span>} />
       <div style={{ height: 'var(--s-lg)' }} />

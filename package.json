@@ -20,10 +20,17 @@
     "week3:test": "node --experimental-strip-types --test scripts/week3-payroll-state.test.mjs",
     "week3:inspect": "node --experimental-strip-types scripts/week3-demo.mjs",
     "week3:dev": "vite --mode week3 --host 127.0.0.1",
+    "week4:test": "node --experimental-strip-types --test scripts/week4-signing.test.mjs scripts/week4-wallets.test.mjs scripts/week4-funding-errors.test.mjs scripts/week4-faucet.test.mjs scripts/week4-assets.test.mjs scripts/week4-funding-ui.test.mjs",
+    "week4:configure": "node --experimental-strip-types scripts/week4-demo.mjs configure",
+    "week4:verify": "node --experimental-strip-types scripts/week4-demo.mjs verify",
+    "week4:dev": "vite --mode week4 --host 127.0.0.1",
+    "flutter:wallet-kit": "node scripts/build-flutter-wallet-kit.mjs",
+    "flutter:configure": "node scripts/configure-flutter-testnet.mjs",
     "contract:build": "PATH=/opt/homebrew/opt/rustup/bin:$PATH stellar contract build",
     "contract:test": "PATH=/opt/homebrew/opt/rustup/bin:$PATH cargo test -p sweldo_payroll_registry"
   },
   "dependencies": {
+    "@creit.tech/stellar-wallets-kit": "2.7.1",
     "@stellar/freighter-api": "^6.0.1",
     "@stellar/stellar-sdk": "^16.0.1",
     "@walletconnect/sign-client": "^2.25.0",
