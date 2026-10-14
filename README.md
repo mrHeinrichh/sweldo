@@ -12,20 +12,20 @@ Sweldo uses Soroban for registry/auditability and Stellar native operations for 
 - `claimClaimableBalance` moves unlocked pay directly to the employee.
 - Before payday, the employer can use the same operation to return an unearned future payout to the funding wallet.
 - `contracts/payroll_registry` is a Soroban contract that stores schedule proof references: employer, worker, amount, asset code, cadence, claimable balance ID, and payout transaction hash.
-- Freighter signs every transaction; the app never sees private keys.
+- Your wallet signs every transaction; the app never sees private keys.
 - Horizon provides the employee's live vesting timeline.
 - Issued assets use standard Stellar trustlines.
 
 ## Run locally
 
-Requirements: Node 20+, a [Freighter](https://www.freighter.app/) wallet switched to Testnet, and a funded Testnet account.
+Requirements: Node 22.18+, [Freighter](https://www.freighter.app/) or [xBull](https://xbull.app/) for the local Week 4 flow, and a funded Testnet account.
 
 ```bash
 npm install
 npm run dev
 ```
 
-The app uses XLM by default so the complete demo works without asset setup. To use test USDC, copy `.env.example` to `.env.local` and provide the code and issuer of an asset controlled by the employer account.
+The app uses XLM by default. The currency dropdown inside **Total pay** on **Pay your team** offers XLM and, when configured, USDC (the controlled Test-USDC asset). It selects the asset for the whole payroll and stays synchronized across employee rows. Choose USDC explicitly for the USDC-to-PHPT flow; trustlines alone do not fund a wallet. Use the existing Week 1/2 configuration helpers for the controlled issuer. No real funds are supported. Historical payouts keep their actual ledger asset when the draft selection changes.
 
 ## Soroban contract
 
@@ -173,7 +173,19 @@ Both variables are required for issued-asset mode. If omitted, Sweldo uses nativ
 
 ## Architecture
 
-The app is fully client-side (React on the web, Flutter on phones). The client builds payout operations, Freighter signs them, and the signed transaction is submitted to Stellar Testnet through Horizon. The Soroban Payroll Registry contract stores schedule proof metadata for reviewer verification and future cross-device reconstruction. Schedule labels and the on-chain balance IDs needed for the current local cancellation controls are still stored in localStorage; private keys never enter the app.
+The app is fully client-side (React on the web, Flutter on phones). The web client builds payout operations, the connected wallet signs them, and the signed transaction is submitted to Stellar Testnet through Horizon. The existing Soroban Payroll Registry stores optional proof metadata. The web employer dashboard reconstructs payroll schedules, balance IDs and claim/cancellation status from Horizon; worker names remain optional session labels. Private keys never enter the app.
+
+## Week 4 Local Wallets Kit Validation
+
+The web integration uses Stellar Wallets Kit 2.7.1 with Freighter and xBull, preserving the configured Freighter Mobile adapter. Shared Testnet/account/envelope checks cover existing payroll, claim-and-convert, cancellation and Soroban proof signing. The existing Flutter app has matching ledger reconstruction, CSV import and wallet/signing behavior; see the [Flutter parity demo](docs/flutter-web-parity-demo.md). No new contract or mainnet work is included.
+
+```bash
+npm run week4:configure
+npm run week4:test
+npm run week4:dev -- --port 5174 --strictPort
+```
+
+Open the local address printed by Vite. Follow the [Week 4 demo and test guide](docs/week-4-wallets-demo.md), [flowchart](docs/week-4-flowchart.svg), and [verification package checklist](docs/week-4-verification-package.md). xBull cannot report its current network; every request explicitly targets Testnet and returned signatures are verified for that network. The Week 4 source and guides are collected on `heinric/week-4-wallets-kit` in [PR #8](https://github.com/mrHeinrichh/sweldo/pull/8). A [demo recording](https://drive.google.com/file/d/1b8a5aGYPnLdT1uSq54mbWJX-d-z0HCRu/view?usp=sharing) is available. The updated deployment and final wallet-by-wallet transaction-hash verification remain pending; publishing the source does not complete those checks.
 
 ## Safety and current scope
 
