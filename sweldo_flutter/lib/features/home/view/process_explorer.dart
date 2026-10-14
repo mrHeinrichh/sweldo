@@ -50,7 +50,7 @@ const _steps = [
   _ProcessStep(
     SwIcons.sign,
     'Sign once',
-    'Freighter approves one transaction that locks every payout.',
+    'Your wallet approves one transaction that locks every payout.',
     _Screen.employer,
     6.4,
     10.3,
@@ -66,7 +66,7 @@ const _steps = [
   _ProcessStep(
     SwIcons.claim,
     'Claim in one tap',
-    'The worker approves in Freighter and the pay lands in their wallet.',
+    'The worker approves in their wallet and the pay lands there.',
     _Screen.worker,
     21.3,
     25.4,

@@ -4,6 +4,7 @@ import '../../../core/error/app_exception.dart';
 import '../../../core/stellar/horizon_client.dart';
 import '../../../core/stellar/stellar_network.dart';
 import '../../../core/stellar/transaction_signer.dart';
+import 'payroll_ledger.dart';
 
 class ScheduleRecipient {
   const ScheduleRecipient({
@@ -31,6 +32,7 @@ class PayrollRepository {
 
   final HorizonClient _horizon;
   final TransactionSubmitter _submitter;
+  PayrollLedger get ledger => PayrollLedger(_horizon);
 
   /// One transaction, one `createClaimableBalance` per payout per employee.
   ///

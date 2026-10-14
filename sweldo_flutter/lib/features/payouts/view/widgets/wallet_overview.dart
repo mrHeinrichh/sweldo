@@ -8,22 +8,21 @@ import '../../../../core/widgets/key_text.dart';
 import '../../../../core/widgets/layout.dart';
 import '../../../../core/widgets/sw_button.dart';
 import '../../../../core/theme/sw_icons.dart';
+import '../../domain/payout.dart';
 
 /// Connected wallet, total still to come, and a manual refresh.
 class WalletOverview extends StatelessWidget {
   const WalletOverview({
     super.key,
     required this.address,
-    required this.totalUnits,
-    required this.assetLabel,
+    required this.totals,
     required this.activeCount,
     required this.loading,
     required this.onRefresh,
   });
 
   final String address;
-  final BigInt totalUnits;
-  final String assetLabel;
+  final List<PayoutTotal> totals;
   final int activeCount;
   final bool loading;
   final VoidCallback onRefresh;
@@ -47,22 +46,28 @@ class WalletOverview extends StatelessWidget {
       children: [
         Text('Locked and claimable', style: SwType.caption),
         const SizedBox(height: 2),
-        TweenAnimationBuilder<double>(
-          tween: Tween(end: double.parse(Amount.string(totalUnits))),
-          duration: SwMotion.of(context, SwMotion.deliberate),
-          curve: SwMotion.enter,
-          builder: (context, value, _) => Text.rich(
-            TextSpan(
-              children: [
-                TextSpan(text: Amount.format(value), style: SwType.amountLarge),
-                TextSpan(
-                  text: ' $assetLabel',
-                  style: SwType.label.copyWith(color: SwColors.inkMuted),
-                ),
-              ],
+        for (final item
+            in (totals.isEmpty ? [PayoutTotal('native', BigInt.zero)] : totals))
+          TweenAnimationBuilder<double>(
+            key: ValueKey(item.asset),
+            tween: Tween(end: double.parse(Amount.string(item.units))),
+            duration: SwMotion.of(context, SwMotion.deliberate),
+            curve: SwMotion.enter,
+            builder: (context, value, _) => Text.rich(
+              TextSpan(
+                children: [
+                  TextSpan(
+                    text: Amount.format(value),
+                    style: SwType.amountLarge,
+                  ),
+                  TextSpan(
+                    text: ' ${item.assetCode}',
+                    style: SwType.label.copyWith(color: SwColors.inkMuted),
+                  ),
+                ],
+              ),
             ),
           ),
-        ),
       ],
     );
     final count = Column(

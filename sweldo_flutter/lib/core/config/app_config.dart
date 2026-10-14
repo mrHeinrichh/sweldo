@@ -1,6 +1,7 @@
 import 'package:stellar_flutter_sdk/stellar_flutter_sdk.dart';
 
 import '../../features/conversion/domain/conversion_pair.dart';
+import '../stellar/payroll_asset.dart';
 
 /// Build-time configuration, supplied with `--dart-define-from-file`.
 ///
@@ -14,6 +15,7 @@ class AppConfig {
     this.registryContractId = '',
     this.walletConnectProjectId = '',
     this.storyDemo = false,
+    this.testFaucetUrl = '',
   });
 
   factory AppConfig.fromEnvironment() => AppConfig(
@@ -27,6 +29,9 @@ class AppConfig {
       'WALLETCONNECT_PROJECT_ID',
     ).trim(),
     storyDemo: const bool.fromEnvironment('SWELDO_STORY_DEMO'),
+    testFaucetUrl: const String.fromEnvironment(
+      'SWELDO_TEST_FAUCET_URL',
+    ).trim(),
   );
 
   final String assetCode;
@@ -34,18 +39,19 @@ class AppConfig {
   final String phptIssuer;
   final String registryContractId;
   final String walletConnectProjectId;
+  final String testFaucetUrl;
 
   /// Presentation mode: open on the story and play it straight away.
   final bool storyDemo;
 
   bool get usesIssuedAsset => assetCode.isNotEmpty && assetIssuer.isNotEmpty;
 
-  /// The asset every payroll payout is locked in.
-  Asset get payrollAsset => usesIssuedAsset
-      ? Asset.createNonNativeAsset(assetCode, assetIssuer)
-      : Asset.NATIVE;
+  List<PayrollAssetOption> get payrollAssets =>
+      payrollAssetOptions(assetCode, assetIssuer);
 
-  String get assetLabel => usesIssuedAsset ? assetCode : 'XLM';
+  /// Configuration enables Test-USDC; a new session still starts with XLM.
+  Asset get payrollAsset => Asset.NATIVE;
+  String get assetLabel => 'XLM';
 
   bool get hasRegistry => registryContractId.isNotEmpty;
 

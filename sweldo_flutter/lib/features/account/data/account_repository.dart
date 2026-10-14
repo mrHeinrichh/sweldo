@@ -3,6 +3,7 @@ import 'package:stellar_flutter_sdk/stellar_flutter_sdk.dart';
 import '../../../core/error/app_exception.dart';
 import '../../../core/stellar/horizon_client.dart';
 import '../../../core/stellar/transaction_signer.dart';
+import 'local_test_faucet.dart';
 
 class WalletBalances {
   const WalletBalances({
@@ -20,10 +21,11 @@ class WalletBalances {
 
 /// Funding a practice wallet and opening trustlines.
 class AccountRepository {
-  AccountRepository(this._horizon, this._submitter);
+  AccountRepository(this._horizon, this._submitter, {this.testFaucet});
 
   final HorizonClient _horizon;
   final TransactionSubmitter _submitter;
+  final LocalTestFaucet? testFaucet;
 
   Future<bool> isFunded(String address) => _horizon.isFunded(address);
 

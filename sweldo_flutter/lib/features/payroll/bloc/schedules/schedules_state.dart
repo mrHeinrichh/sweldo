@@ -8,6 +8,8 @@ class SchedulesState extends Equatable {
     this.balancesLoaded = false,
     this.cancellingId,
     this.notice,
+    this.loading = false,
+    this.checkedAt,
   });
 
   final List<PayrollSchedule> schedules;
@@ -20,6 +22,8 @@ class SchedulesState extends Equatable {
   final bool balancesLoaded;
   final String? cancellingId;
   final NoticeData? notice;
+  final bool loading;
+  final DateTime? checkedAt;
 
   List<String> cancellableFor(PayrollSchedule schedule, DateTime now) =>
       cancellableBalanceIds(schedule, activeBalanceIds, now);
@@ -31,6 +35,8 @@ class SchedulesState extends Equatable {
     bool? balancesLoaded,
     String? Function()? cancellingId,
     NoticeData? Function()? notice,
+    bool? loading,
+    DateTime? Function()? checkedAt,
   }) => SchedulesState(
     schedules: schedules ?? this.schedules,
     address: address != null ? address() : this.address,
@@ -38,6 +44,8 @@ class SchedulesState extends Equatable {
     balancesLoaded: balancesLoaded ?? this.balancesLoaded,
     cancellingId: cancellingId != null ? cancellingId() : this.cancellingId,
     notice: notice != null ? notice() : this.notice,
+    loading: loading ?? this.loading,
+    checkedAt: checkedAt != null ? checkedAt() : this.checkedAt,
   );
 
   @override
@@ -48,5 +56,7 @@ class SchedulesState extends Equatable {
     balancesLoaded,
     cancellingId,
     notice,
+    loading,
+    checkedAt,
   ];
 }

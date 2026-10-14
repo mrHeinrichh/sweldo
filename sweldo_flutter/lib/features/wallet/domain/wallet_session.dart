@@ -2,7 +2,7 @@ import 'package:equatable/equatable.dart';
 
 import '../../../core/stellar/stellar_network.dart';
 
-/// Ways to reach Freighter.
+/// Supported wallet transports.
 enum WalletKind {
   /// The Freighter browser extension (Flutter web).
   freighterExtension(
@@ -14,7 +14,8 @@ enum WalletKind {
   freighterMobile(
     'Freighter app',
     'Approve each payroll action in Freighter on your phone.',
-  );
+  ),
+  xbull('xBull', 'Connect and approve Testnet transactions with xBull.');
 
   const WalletKind(this.title, this.description);
 
@@ -31,7 +32,7 @@ class WalletSession extends Equatable {
 
   final String address;
 
-  /// Freighter's network name, e.g. `TESTNET` or `PUBLIC`.
+  /// Reported network, or the explicitly requested Testnet for xBull.
   final String network;
   final WalletKind kind;
 

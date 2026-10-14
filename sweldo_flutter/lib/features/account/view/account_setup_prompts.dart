@@ -5,16 +5,23 @@ import '../../../core/theme/motion.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../core/theme/typography.dart';
 import '../../../core/widgets/sw_button.dart';
+import '../../../core/widgets/external_link.dart';
+import '../../../core/utils/amount.dart';
 import '../bloc/account_setup_cubit.dart';
 import '../../../core/theme/sw_icons.dart';
 
 /// "Your practice wallet is empty" and "Enable USDC" prompts. Each appears
 /// only while it's needed and collapses away once resolved.
 class AccountSetupPrompts extends StatelessWidget {
-  const AccountSetupPrompts({super.key, required this.trustlineMessage});
+  const AccountSetupPrompts({
+    super.key,
+    required this.trustlineMessage,
+    this.showTestUsdcFunding = true,
+  });
 
   /// Why this page needs the trustline, in the page's own terms.
   final String trustlineMessage;
+  final bool showTestUsdcFunding;
 
   @override
   Widget build(BuildContext context) {
@@ -47,6 +54,26 @@ class AccountSetupPrompts extends StatelessWidget {
             loading: state.enabling,
             onPressed: cubit.enableAsset,
           ),
+        )
+      else if (showTestUsdcFunding &&
+          asset == 'USDC' &&
+          state.faucetAvailable &&
+          state.balances != null &&
+          Amount.tryUnits(state.balances!.asset) == BigInt.zero)
+        _Prompt(
+          key: const ValueKey('test-usdc'),
+          icon: SwIcons.savings,
+          title: '${state.balances!.asset} test-USDC available',
+          body: 'Local Testnet funds. No real monetary value.',
+          action: SwButton(
+            label: 'Get 25 test-USDC',
+            icon: SwIcons.savings,
+            tone: SwButtonTone.secondary,
+            loading: state.fundingAsset,
+            onPressed: state.fundingReceipt?.status == 'pending'
+                ? null
+                : cubit.fundAsset,
+          ),
         ),
     ];
 
@@ -56,15 +83,17 @@ class AccountSetupPrompts extends StatelessWidget {
       alignment: Alignment.topCenter,
       child: AnimatedSwitcher(
         duration: SwMotion.of(context, SwMotion.standard),
-        child: prompts.isEmpty
+        child: prompts.isEmpty && state.fundingReceipt?.hash == null
             ? const SizedBox(width: double.infinity)
             : Padding(
-                key: prompts.first.key,
+                key: prompts.isNotEmpty
+                    ? prompts.first.key
+                    : const ValueKey('test-usdc-receipt'),
                 padding: const EdgeInsets.only(bottom: SwSpace.lg),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    prompts.first,
+                    if (prompts.isNotEmpty) prompts.first,
                     if (state.error != null)
                       Padding(
                         padding: const EdgeInsets.only(top: SwSpace.sm),
@@ -72,6 +101,18 @@ class AccountSetupPrompts extends StatelessWidget {
                           state.error!,
                           style: SwType.caption.copyWith(
                             color: SwColors.danger,
+                          ),
+                        ),
+                      ),
+                    if (state.fundingReceipt?.hash != null)
+                      Padding(
+                        padding: const EdgeInsets.only(top: SwSpace.sm),
+                        child: ExternalLink(
+                          label: state.fundingReceipt!.status == 'pending'
+                              ? 'Funding pending: check transaction'
+                              : 'View funding transaction',
+                          uri: Uri.parse(
+                            'https://stellar.expert/explorer/testnet/tx/${state.fundingReceipt!.hash}',
                           ),
                         ),
                       ),

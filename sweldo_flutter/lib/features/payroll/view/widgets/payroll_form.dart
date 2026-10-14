@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../../../../core/config/app_config.dart';
 import '../../../../core/responsive/breakpoints.dart';
 import '../../../../core/theme/motion.dart';
 import '../../../../core/theme/sw_icons.dart';
@@ -23,7 +22,9 @@ import '../../../tour/tour_controller.dart';
 import 'payroll_progress.dart';
 import 'payroll_proof_card.dart';
 import 'recipient_row.dart';
+import 'roster_import.dart';
 import 'pay_schedule_builder.dart';
+import 'payroll_asset_selector.dart';
 
 typedef _StepCopy = ({String title, String description, String? next});
 
@@ -43,7 +44,7 @@ const _steps = <_StepCopy>[
   (
     title: 'Review and lock',
     description:
-        'Check the plan, then sign once in Freighter to lock every payout.',
+        'Check the plan, then sign once in your wallet to lock every payout.',
     next: null,
   ),
 ];
@@ -86,8 +87,8 @@ class _PayrollFormState extends State<PayrollForm> {
 
   @override
   Widget build(BuildContext context) {
-    final asset = context.read<AppConfig>().assetLabel;
     final state = context.watch<PayrollFormBloc>().state;
+    final asset = state.assetLabel;
     final bloc = context.read<PayrollFormBloc>();
     final wide = isWide(context);
     final locked = state.step == 2 && state.lastProof != null;
@@ -333,10 +334,11 @@ class _TeamStep extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final asset = context.read<AppConfig>().assetLabel;
     final state = context.watch<PayrollFormBloc>().state;
+    final asset = state.assetLabel;
     final bloc = context.read<PayrollFormBloc>();
     final count = state.recipients.length;
+    final account = context.watch<AccountSetupCubit>().state;
     final employer = context.select((WalletBloc b) => b.state.session?.address);
     final firstIncomplete = state.recipients.indexWhere(
       (r) => state.isIncomplete(r, employer: employer),
@@ -363,6 +365,10 @@ class _TeamStep extends StatelessWidget {
           ],
         ),
         const SizedBox(height: SwSpace.sm),
+        const Align(
+          alignment: Alignment.centerRight,
+          child: RosterImportButton(),
+        ),
         TourTarget(
           id: 'employees',
           child: AnimatedSize(
@@ -383,6 +389,19 @@ class _TeamStep extends StatelessWidget {
                       index: i,
                       payouts: state.payouts,
                       assetLabel: asset,
+                      assetSelector: PayrollAssetSelector(
+                        options: bloc.assetOptions,
+                        value: state.assetId,
+                        semanticLabel:
+                            'Payroll asset for all employees, row ${i + 1}',
+                        onChanged:
+                            state.submitting ||
+                                account.funding ||
+                                account.enabling ||
+                                account.fundingAsset
+                            ? null
+                            : (id) => bloc.add(PayrollAssetSelected(id)),
+                      ),
                       removable: count > 1,
                       animateIn: !initialIds.contains(state.recipients[i].id),
                       teamChecks: state.teamChecks,
@@ -404,8 +423,8 @@ class _ReviewStep extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final asset = context.read<AppConfig>().assetLabel;
     final state = context.watch<PayrollFormBloc>().state;
+    final asset = state.assetLabel;
     final bloc = context.read<PayrollFormBloc>();
     final employer = context.select((WalletBloc b) => b.state.session?.address);
     final people = state.recipients.length;

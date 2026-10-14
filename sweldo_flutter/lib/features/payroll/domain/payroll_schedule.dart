@@ -1,9 +1,51 @@
 import 'package:equatable/equatable.dart';
 
-/// A funded payroll for one employee, remembered on this device.
+enum PayrollPayoutStatus {
+  scheduled,
+  claimable,
+  claimed,
+  cancelled,
+  unverified,
+}
+
+class PayrollPayout extends Equatable {
+  const PayrollPayout({
+    required this.balanceId,
+    required this.amount,
+    required this.unlockAt,
+    required this.active,
+    required this.status,
+    this.settlementHash,
+    this.settledAt,
+  });
+  final String balanceId;
+  final String amount;
+  final DateTime unlockAt;
+  final bool active;
+  final PayrollPayoutStatus status;
+  final String? settlementHash;
+  final DateTime? settledAt;
+  String label(DateTime now) => active
+      ? (unlockAt.isAfter(now) ? 'Scheduled' : 'Claimable')
+      : switch (status) {
+          PayrollPayoutStatus.claimed => 'Claimed',
+          PayrollPayoutStatus.cancelled => 'Cancelled',
+          _ => 'Unverified',
+        };
+  @override
+  List<Object?> get props => [
+    balanceId,
+    amount,
+    unlockAt,
+    active,
+    status,
+    settlementHash,
+  ];
+}
+
+/// A payroll reconstructed from Horizon, with optional session-only labels.
 ///
-/// Field names match the React app's `ScheduleMeta` so the JSON stays
-/// compatible with what it stored under `sweldo-schedules-v1`.
+/// Legacy metadata serialization remains readable; it is not settlement proof.
 class PayrollSchedule extends Equatable {
   const PayrollSchedule({
     required this.id,
@@ -24,6 +66,7 @@ class PayrollSchedule extends Equatable {
     this.cancelledPayouts,
     this.registryHash,
     this.registryContractId,
+    this.payouts = const [],
   });
 
   factory PayrollSchedule.fromJson(Map<String, dynamic> json) =>
@@ -68,6 +111,7 @@ class PayrollSchedule extends Equatable {
   final int? cancelledPayouts;
   final String? registryHash;
   final String? registryContractId;
+  final List<PayrollPayout> payouts;
 
   bool get isCancelled => cancelledAt != null;
 
@@ -106,6 +150,7 @@ class PayrollSchedule extends Equatable {
   };
 
   PayrollSchedule copyWith({
+    String? name,
     DateTime? cancelledAt,
     String? cancelHash,
     int? cancelledPayouts,
@@ -114,7 +159,7 @@ class PayrollSchedule extends Equatable {
   }) => PayrollSchedule(
     id: id,
     employee: employee,
-    name: name,
+    name: name ?? this.name,
     total: total,
     tranches: tranches,
     asset: asset,
@@ -130,6 +175,7 @@ class PayrollSchedule extends Equatable {
     cancelledPayouts: cancelledPayouts ?? this.cancelledPayouts,
     registryHash: registryHash ?? this.registryHash,
     registryContractId: registryContractId ?? this.registryContractId,
+    payouts: payouts,
   );
 
   @override
@@ -145,6 +191,7 @@ class PayrollSchedule extends Equatable {
     cancelHash,
     cancelledPayouts,
     registryHash,
+    payouts,
   ];
 }
 
@@ -155,6 +202,16 @@ List<String> cancellableBalanceIds(
   Set<String> activeBalanceIds,
   DateTime now,
 ) {
+  if (schedule.payouts.isNotEmpty) {
+    return [
+      for (final payout in schedule.payouts)
+        if (schedule.revocable &&
+            payout.active &&
+            activeBalanceIds.contains(payout.balanceId) &&
+            payout.unlockAt.isAfter(now))
+          payout.balanceId,
+    ];
+  }
   if (!schedule.revocable ||
       schedule.balanceIds.isEmpty ||
       schedule.firstUnlock == null ||

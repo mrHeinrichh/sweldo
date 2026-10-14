@@ -13,6 +13,7 @@ import '../features/tour/tour_steps.dart';
 import 'dependencies.dart';
 import '../features/story/view/story_page.dart';
 import 'router/app_router.dart';
+import '../features/wallet/data/kit/kit_navigation.dart';
 
 class SweldoApp extends StatefulWidget {
   const SweldoApp({super.key, required this.dependencies});
@@ -25,6 +26,7 @@ class SweldoApp extends StatefulWidget {
 
 class _SweldoAppState extends State<SweldoApp> {
   late final GoRouter _router = buildRouter(
+    navigatorKey: walletNavigatorKey,
     initialLocation: widget.dependencies.config.storyDemo
         ? StoryPage.path
         : AppRoute.overview.path,
@@ -79,12 +81,14 @@ class _SweldoAppState extends State<SweldoApp> {
           ),
           // Form and lists live above the router so they survive tab switches.
           BlocProvider(
-            create: (_) => PayrollFormBloc(
+            create: (context) => PayrollFormBloc(
               payroll: deps.payroll,
               registry: deps.registry,
               store: deps.schedules,
               asset: deps.config.payrollAsset,
               assetLabel: deps.config.assetLabel,
+              assetOptions: deps.config.payrollAssets,
+              selectAsset: context.read<AccountSetupCubit>().selectAsset,
             ),
           ),
           BlocProvider(

@@ -21,8 +21,7 @@ import '../../bloc/schedules/schedules_bloc.dart';
 import '../../domain/payroll_schedule.dart';
 import '../../../../core/theme/sw_icons.dart';
 
-/// Recent payrolls on this device, with future-payout cancellation.
-/// Collapses to its header; the employer page hides it while it's empty.
+/// Horizon-backed payroll history, inspectable without connecting a wallet.
 class ScheduleList extends StatefulWidget {
   const ScheduleList({super.key});
 
@@ -32,10 +31,21 @@ class ScheduleList extends StatefulWidget {
 
 class _ScheduleListState extends State<ScheduleList> {
   bool _expanded = true;
+  final _address = TextEditingController();
+  String? _lastAddress;
+  @override
+  void dispose() {
+    _address.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     final state = context.watch<SchedulesBloc>().state;
+    if (_lastAddress != state.address) {
+      _lastAddress = state.address;
+      _address.text = state.address ?? '';
+    }
     final count = state.schedules.length;
     final duration = SwMotion.of(context, SwMotion.standard);
 
@@ -75,7 +85,7 @@ class _ScheduleListState extends State<ScheduleList> {
                           children: [
                             Flexible(
                               child: Text(
-                                'Recent payrolls',
+                                'Payroll history',
                                 style: SwType.title,
                               ),
                             ),
@@ -110,10 +120,7 @@ class _ScheduleListState extends State<ScheduleList> {
                             ),
                           ],
                         ),
-                        Text(
-                          'Saved on this device, each linked to its proof.',
-                          style: SwType.bodySmall,
-                        ),
+                        Text('Stellar Testnet', style: SwType.bodySmall),
                       ],
                     ),
                   ),
@@ -139,7 +146,7 @@ class _ScheduleListState extends State<ScheduleList> {
           SwIconButton(
             icon: SwIcons.refresh,
             tooltip: 'Check the ledger again',
-            loading: !state.balancesLoaded,
+            loading: state.loading,
             onPressed: () => context.read<SchedulesBloc>().add(
               const SchedulesRefreshRequested(),
             ),
@@ -154,6 +161,40 @@ class _ScheduleListState extends State<ScheduleList> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           header,
+          const SizedBox(height: SwSpace.md),
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _address,
+                  decoration: const InputDecoration(
+                    labelText: 'Employer public key',
+                  ),
+                  onSubmitted: (value) => context.read<SchedulesBloc>().add(
+                    SchedulesInspectRequested(value),
+                  ),
+                ),
+              ),
+              const SizedBox(width: SwSpace.sm),
+              SwButton(
+                label: 'Load payroll',
+                icon: SwIcons.ledger,
+                tone: SwButtonTone.secondary,
+                loading: state.loading,
+                onPressed: () => context.read<SchedulesBloc>().add(
+                  SchedulesInspectRequested(_address.text),
+                ),
+              ),
+            ],
+          ),
+          if (state.checkedAt != null)
+            Padding(
+              padding: const EdgeInsets.only(top: SwSpace.sm),
+              child: Text(
+                'Checked ${formatDateTime(state.checkedAt!)}',
+                style: SwType.caption,
+              ),
+            ),
           AnimatedNotice(
             state.notice,
             padding: const EdgeInsets.only(top: SwSpace.lg),
@@ -169,6 +210,15 @@ class _ScheduleListState extends State<ScheduleList> {
                       padding: const EdgeInsets.only(top: SwSpace.lg),
                       child: Column(
                         children: [
+                          if (count == 0)
+                            Text(
+                              state.loading
+                                  ? 'Reading payroll history...'
+                                  : state.balancesLoaded
+                                  ? 'No supported payroll schedules found for this employer.'
+                                  : 'Enter an employer public key to view payroll.',
+                              style: SwType.bodySmall,
+                            ),
                           for (var i = 0; i < count; i++) ...[
                             if (i > 0) const Divider(height: SwSpace.xl),
                             _ScheduleTile(
@@ -194,7 +244,6 @@ class _ScheduleTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final perPayout = Amount.perPayout(schedule.total, schedule.tranches);
     final fresh =
         DateTime.now().difference(schedule.createdAt) <
         const Duration(seconds: 4);
@@ -220,8 +269,7 @@ class _ScheduleTile extends StatelessWidget {
                   Text(schedule.name, style: SwType.subtitle),
                   KeyText(schedule.employee, edge: 5),
                   Text(
-                    '${schedule.tranches} ${plural(schedule.tranches, 'payout')} '
-                    'of ${Amount.format(perPayout)} ${schedule.asset}',
+                    '${schedule.tranches} ${plural(schedule.tranches, 'payout')} / Total ${Amount.format(schedule.total)} ${schedule.asset}',
                     style: SwType.bodySmall,
                   ),
                   Text(
@@ -244,6 +292,7 @@ class _ScheduleTile extends StatelessWidget {
           ],
         ),
         const SizedBox(height: SwSpace.md),
+        if (schedule.payouts.isNotEmpty) _LedgerPayouts(schedule: schedule),
         _ScheduleControl(schedule: schedule),
       ],
     );
@@ -253,6 +302,78 @@ class _ScheduleTile extends StatelessWidget {
         .fadeIn(duration: SwMotion.deliberate)
         .slideY(begin: -0.08, end: 0, curve: SwMotion.enter);
   }
+}
+
+class _LedgerPayouts extends StatelessWidget {
+  const _LedgerPayouts({required this.schedule});
+  final PayrollSchedule schedule;
+  @override
+  Widget build(BuildContext context) => SecondTicker(
+    builder: (context, now) {
+      final claimed = schedule.payouts
+          .where((p) => p.status == PayrollPayoutStatus.claimed)
+          .length;
+      final cancelled = schedule.payouts
+          .where((p) => p.status == PayrollPayoutStatus.cancelled)
+          .length;
+      final state = context.watch<SchedulesBloc>().state;
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            '$claimed claimed / $cancelled cancelled / ${schedule.payouts.where((p) => p.active).length} open',
+            style: SwType.caption,
+          ),
+          if (state.balancesLoaded)
+            Text(
+              '${state.cancellableFor(schedule, now).length} future payouts eligible for employer cancellation',
+              style: SwType.caption,
+            ),
+          for (final payout in schedule.payouts)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: SwSpace.sm),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          '${Amount.format(payout.amount)} ${schedule.asset}',
+                          style: SwType.label,
+                        ),
+                      ),
+                      Text(payout.label(now), style: SwType.caption),
+                    ],
+                  ),
+                  Text(
+                    'Payday ${formatDateTime(payout.unlockAt)}',
+                    style: SwType.caption,
+                  ),
+                  KeyText(payout.balanceId, edge: 6),
+                  Wrap(
+                    spacing: SwSpace.sm,
+                    children: [
+                      ExternalLink(
+                        label: 'Balance',
+                        uri: Explorer.claimableBalance(payout.balanceId),
+                      ),
+                      if (payout.settlementHash != null)
+                        ExternalLink(
+                          label: payout.status == PayrollPayoutStatus.cancelled
+                              ? 'Cancellation'
+                              : 'Claim',
+                          uri: Explorer.transaction(payout.settlementHash!),
+                        ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+        ],
+      );
+    },
+  );
 }
 
 /// The cancellation status line, re-evaluated every second because a
@@ -273,7 +394,7 @@ class _ScheduleControl extends StatelessWidget {
         final Widget content;
         if (!schedule.revocable) {
           content = _status('Original schedule. Cancellation was not enabled.');
-        } else if (schedule.isCancelled) {
+        } else if (schedule.isCancelled && remaining.isEmpty) {
           final n = schedule.cancelledPayouts ?? 0;
           content = Wrap(
             spacing: SwSpace.md,
@@ -325,9 +446,7 @@ class _ScheduleControl extends StatelessWidget {
             ],
           );
         } else {
-          content = _status(
-            'Every payday has arrived. Nothing left to cancel.',
-          );
+          content = _status('No verified future payouts remain to cancel.');
         }
 
         return Container(

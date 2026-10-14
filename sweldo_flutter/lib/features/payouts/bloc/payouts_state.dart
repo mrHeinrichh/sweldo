@@ -33,11 +33,20 @@ class PayoutsState extends Equatable {
   List<Payout> get openPayouts =>
       payouts.where((p) => !claimedHashes.containsKey(p.balanceId)).toList();
 
-  /// Sum of everything still locked or claimable, in stroops.
-  BigInt get totalUnits => openPayouts.fold(
-    BigInt.zero,
-    (sum, p) => sum + (Amount.tryUnits(p.amount) ?? BigInt.zero),
-  );
+  /// Amounts are comparable only within the same asset and issuer.
+  List<PayoutTotal> get totalsByAsset {
+    final totals = <String, BigInt>{};
+    for (final payout in openPayouts) {
+      totals.update(
+        payout.asset,
+        (sum) => sum + (Amount.tryUnits(payout.amount) ?? BigInt.zero),
+        ifAbsent: () => Amount.tryUnits(payout.amount) ?? BigInt.zero,
+      );
+    }
+    return [
+      for (final entry in totals.entries) PayoutTotal(entry.key, entry.value),
+    ];
+  }
 
   PayoutsState copyWith({
     bool? loading,

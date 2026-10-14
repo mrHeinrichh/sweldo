@@ -160,7 +160,7 @@ class _ConversionContent extends StatelessWidget {
                     ),
                     SwButton(
                       label: state.signing
-                          ? 'Confirm in Freighter…'
+                          ? 'Confirm in wallet…'
                           : 'Claim and convert',
                       icon: SwIcons.convert,
                       loading: state.signing,

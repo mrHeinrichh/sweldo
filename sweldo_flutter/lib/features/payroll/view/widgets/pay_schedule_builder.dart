@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../../../../core/config/app_config.dart';
 import '../../../../core/motion/interactive.dart';
 import '../../../../core/responsive/breakpoints.dart';
 import '../../../../core/stellar/stellar_network.dart';
@@ -965,8 +964,8 @@ class _Insights extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final asset = context.read<AppConfig>().assetLabel;
-    final native = !context.read<AppConfig>().usesIssuedAsset;
+    final asset = state.assetLabel;
+    final native = state.assetId == 'native';
     final connected = context.select((WalletBloc b) => b.state.session != null);
     final balances = context.select((AccountSetupCubit c) => c.state.balances);
     final bloc = context.read<PayrollFormBloc>();
@@ -1049,7 +1048,7 @@ class _Insights extends StatelessWidget {
       return const InsightChip(
         icon: SwIcons.wallet,
         tone: InsightTone.caution,
-        text: 'This wallet isn’t funded on Testnet yet',
+        text: 'Checking this wallet’s Testnet balance',
       );
     }
     final total = state.totalLockedUnits.toDouble() / 1e7;

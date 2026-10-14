@@ -17,20 +17,19 @@ class ScheduleStoreChange {
   final List<String> removedBalanceIds;
 }
 
-/// Schedule labels and balance IDs, kept on this device under the same key
-/// the React app uses.
+/// Optional labels from this session. Payroll state always comes from Horizon;
+/// names are not published to the ledger or treated as settlement evidence.
 class ScheduleStore {
-  ScheduleStore(this._store);
+  ScheduleStore(LocalStore store);
 
   static const key = 'sweldo-schedules-v1';
 
-  final LocalStore _store;
+  List<PayrollSchedule> _schedules = [];
   final _changes = StreamController<ScheduleStoreChange>.broadcast();
 
   Stream<ScheduleStoreChange> get changes => _changes.stream;
 
-  List<PayrollSchedule> read() =>
-      _store.readList(key).map(PayrollSchedule.fromJson).toList();
+  List<PayrollSchedule> read() => List.unmodifiable(_schedules);
 
   /// Newest schedules go first.
   Future<void> prepend(
@@ -57,6 +56,7 @@ class ScheduleStore {
     );
   }
 
-  Future<void> _write(List<PayrollSchedule> schedules) =>
-      _store.writeList(key, schedules.map((s) => s.toJson()).toList());
+  Future<void> _write(List<PayrollSchedule> schedules) async {
+    _schedules = schedules;
+  }
 }

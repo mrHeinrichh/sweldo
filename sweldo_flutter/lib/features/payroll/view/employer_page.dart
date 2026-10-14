@@ -8,7 +8,6 @@ import '../../../core/theme/motion.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../core/widgets/layout.dart';
 import '../bloc/payroll_form/payroll_form_bloc.dart';
-import '../bloc/schedules/schedules_bloc.dart';
 import 'widgets/payroll_form.dart';
 import 'widgets/schedule_list.dart';
 
@@ -30,10 +29,7 @@ class _EmployerPageState extends State<EmployerPage> {
   @override
   Widget build(BuildContext context) {
     // Recent payrolls appear only once there is something to show.
-    final hasHistory = context.select(
-      (SchedulesBloc b) =>
-          b.state.schedules.isNotEmpty || b.state.notice != null,
-    );
+    const hasHistory = true;
     final twoColumns = context.up(Breakpoint.lg) && hasHistory;
 
     Widget list = const ScheduleList();
