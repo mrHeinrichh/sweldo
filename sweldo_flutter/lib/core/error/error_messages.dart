@@ -75,10 +75,15 @@ String conversionError(Object error) {
 }
 
 String? _rejectedMessage(List<String> codes) {
-  if (codes.contains('op_underfunded') ||
-      codes.contains('tx_insufficient_balance')) {
-    return "This wallet doesn't hold enough to lock that payroll, including "
-        'a 1 XLM reserve per payout. Lower the amount or fund the wallet.';
+  if (codes.contains('tx_insufficient_balance') ||
+      codes.contains('op_low_reserve')) {
+    return 'Not enough available Testnet XLM for fees and reserves. Add test '
+        'XLM or reduce the number of payouts.';
+  }
+  if (codes.contains('op_underfunded')) {
+    return 'The paying wallet does not hold enough of the selected payroll '
+        'asset. Enabling an asset only adds a trustline; it does not add funds. '
+        'Add the configured test asset or lower the payroll total.';
   }
   if (codes.contains('op_no_trust') || codes.contains('op_src_no_trust')) {
     return 'A wallet in this payroll has no trustline for the asset. Enable '
