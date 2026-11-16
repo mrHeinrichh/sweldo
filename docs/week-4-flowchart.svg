@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1120" height="860" viewBox="0 0 1120 860" role="img" aria-labelledby="title desc">
   <title id="title">Sweldo Week 4: Wallets Kit and local verification</title>
-  <desc id="desc">Freighter and xBull connect through Stellar Wallets Kit. Existing Testnet payroll and conversion transactions are checked, approved in the wallet, and verified before submission. Real receipts and fresh-browser reconstruction feed the verification package. PR 8 collects the source release; the updated deployment and final receipt verification remain pending.</desc>
+  <desc id="desc">Varial and xBull connect through Stellar Wallets Kit. Existing Testnet payroll and conversion transactions are checked, approved in the wallet, and verified before submission. Real receipts and fresh-browser reconstruction feed the verification package. PR 8 collects the source release; Vercel deploys branch previews automatically; final receipt verification remains pending.</desc>
   <defs>
     <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10Z" fill="#555"/></marker>
     <style>text{font-family:Arial,sans-serif;fill:#161616;font-size:17px}.heading{font-size:30px;font-weight:700}.sub{font-size:15px;fill:#555}.label{font-weight:700}.box{fill:#fff;stroke:#aab3bb;stroke-width:1.5}.check{fill:#edf8f1;stroke:#639e7c;stroke-width:1.5}.pending{fill:#fff8e5;stroke:#b79641;stroke-width:1.5}.arrow{fill:none;stroke:#555;stroke-width:2;marker-end:url(#arrow)}</style>
@@ -9,7 +9,7 @@
   <text x="40" y="50" class="heading">Sweldo / Week 4</text>
   <text x="40" y="80" class="sub">Local React and Flutter clients. Test assets only. Shared Kit adapter and matching payroll flows.</text>
   <rect x="40" y="120" width="300" height="105" rx="6" class="box"/>
-  <text x="60" y="152" class="label">Connect wallet</text><text x="60" y="180">Freighter extension or xBull</text><text x="60" y="206" class="sub">Wallet shares only its public address</text>
+  <text x="60" y="152" class="label">Connect wallet</text><text x="60" y="180">Varial extension or xBull</text><text x="60" y="206" class="sub">Wallet shares only its public address</text>
   <path d="M340 173H405" class="arrow"/>
   <rect x="410" y="120" width="300" height="105" rx="6" class="box"/>
   <text x="430" y="152" class="label">Stellar Wallets Kit</text><text x="430" y="180">Choose the scoped module</text><text x="430" y="206" class="sub">Existing mobile adapter is preserved</text>

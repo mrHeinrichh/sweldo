@@ -153,14 +153,14 @@ class _WalletChoices extends StatelessWidget {
             onPressed: () =>
                 context.read<WalletBloc>().add(const WalletPairingDismissed()),
           ),
-        // Only offer the store when Freighter is known to be missing.
+        // Only offer the store when Varial is known to be missing.
         _FreighterInstalled(
           builder: (context, installed) => installed == false
               ? Padding(
                   padding: const EdgeInsets.only(top: SwSpace.sm),
                   child: Row(
                     children: [
-                      Text("Don't have Freighter? ", style: SwType.bodySmall),
+                      Text("Don't have Varial? ", style: SwType.bodySmall),
                       ExternalLink(
                         label: 'Get it on ${FreighterLinks.storeName}',
                         uri: FreighterLinks.store,
@@ -178,9 +178,9 @@ class _WalletChoices extends StatelessWidget {
   }
 }
 
-/// Builds with whether Freighter is installed on this phone: null while
+/// Builds with whether Varial is installed on this phone: null while
 /// checking, then true or false. Checks again when Sweldo comes back to the
-/// front, so installing Freighter from the store updates the sheet.
+/// front, so installing Varial from the store updates the sheet.
 class _FreighterInstalled extends StatefulWidget {
   const _FreighterInstalled({required this.builder});
 
@@ -315,8 +315,8 @@ class _WalletOption extends StatelessWidget {
   }
 }
 
-/// WalletConnect pairing: a QR code for Freighter on another device, plus a
-/// direct link when Freighter is on this phone.
+/// WalletConnect pairing: a QR code for Varial on another device, plus a
+/// direct link when Varial is on this phone.
 class _PairingView extends StatelessWidget {
   const _PairingView({super.key, required this.uri});
 
@@ -331,22 +331,22 @@ class _PairingView extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text('Approve in Freighter', style: SwType.title),
+        Text('Approve in Varial', style: SwType.title),
         const SizedBox(height: SwSpace.sm),
         _FreighterInstalled(
           builder: (context, installed) => Text(
             !_onPhone
-                ? 'Open Freighter on your phone, tap the scanner, and point it '
+                ? 'Open Varial on your phone, tap the scanner, and point it '
                       'at this code. Then approve the connection on Testnet.'
                 : installed == false
-                ? 'Freighter should open with a connection request. If it '
+                ? 'Varial should open with a connection request. If it '
                       "isn't installed, you'll go to ${FreighterLinks.storeName} "
                       'to get it.'
-                : 'Freighter should open with a connection request.',
+                : 'Varial should open with a connection request.',
             style: SwType.bodySmall,
           ),
         ),
-        // On a phone the link opens Freighter directly; the code is for
+        // On a phone the link opens Varial directly; the code is for
         // scanning from another device.
         if (!_onPhone) ...[
           const SizedBox(height: SwSpace.xl),
@@ -408,7 +408,7 @@ class _PairingView extends StatelessWidget {
             ),
             if (_onPhone)
               SwButton(
-                label: 'Open Freighter',
+                label: 'Open Varial',
                 icon: SwIcons.openApp,
                 onPressed: () => FreighterLinks.open(link),
               ),

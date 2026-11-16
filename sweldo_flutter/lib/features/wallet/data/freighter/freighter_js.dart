@@ -1,4 +1,4 @@
-// Bindings for `window.freighterApi` (@stellar/freighter-api 6.x), loaded by
+// Bindings for `window.freighterApi` (@stellar/varial-sdk 7.x), loaded by
 // web/index.html. Web-only: imported through a conditional export.
 import 'dart:js_interop';
 
@@ -18,7 +18,7 @@ extension type FreighterApi._(JSObject _) implements JSObject {
   );
 }
 
-/// Every Freighter call resolves to an object that carries either its payload
+/// Every Varial call resolves to an object that carries either its payload
 /// or an `error`.
 extension type FreighterResult._(JSObject _) implements JSObject {
   external FreighterError? get error;

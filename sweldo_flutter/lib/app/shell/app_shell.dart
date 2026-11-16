@@ -70,9 +70,9 @@ class AppShell extends StatelessWidget {
         duration: Duration(seconds: message.isError ? 8 : 4),
         action: message.walletMissing
             ? SnackBarAction(
-                label: 'Get Freighter',
+                label: 'Get Varial',
                 onPressed: () =>
-                    openExternal(Uri.parse('https://www.freighter.app/')),
+                    openExternal(Uri.parse('https://varialwallet.com/')),
               )
             : null,
       ),
@@ -292,7 +292,7 @@ class _WrongNetworkBanner extends StatelessWidget {
                     const SizedBox(width: SwSpace.sm),
                     Expanded(
                       child: Text(
-                        'Freighter is on ${session.network.isEmpty ? 'another network' : session.network}. '
+                        'Varial is on ${session.network.isEmpty ? 'another network' : session.network}. '
                         'Switch it to Testnet before signing, then reconnect.',
                         style: SwType.bodySmall.copyWith(color: SwColors.ink),
                       ),

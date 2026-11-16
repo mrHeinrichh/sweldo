@@ -469,7 +469,7 @@ class EmployerScreen extends StatelessWidget {
           child: _ConfirmSheet(
             visible: sheet,
             approveTap: approveTap,
-            title: 'Confirm in Freighter',
+            title: 'Confirm in Varial',
             rows: const [
               ('Lock', '1,800 USDC'),
               ('Payouts', '6, monthly'),
@@ -626,7 +626,7 @@ class WorkerScreen extends StatelessWidget {
           child: _ConfirmSheet(
             visible: sheet,
             approveTap: approveTap,
-            title: 'Confirm in Freighter',
+            title: 'Confirm in Varial',
             rows: const [
               ('Claim', '300 USDC'),
               ('To', 'Your wallet'),

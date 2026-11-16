@@ -36,7 +36,7 @@ export const SWELDO_TOUR: TourStep[] = [
   {
     target: 'connect',
     title: 'Connect your wallet',
-    body: 'Choose Freighter or xBull on Testnet. The existing Freighter app option is also available when configured. Sweldo never sees your keys.',
+    body: 'Choose Varial or xBull on Testnet. The existing Varial app option is also available when configured. Sweldo never sees your keys.',
   },
   {
     route: '/employer',

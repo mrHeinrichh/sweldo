@@ -49,7 +49,7 @@ test('xBull does not invent a wallet-reported network or call unsupported getNet
   const value = await kitAccount(transport({ network: async () => assert.fail('xBull does not report its network') }), 'xbull')
   assert.deepEqual(value, account)
 })
-test('Freighter reads the actual network and rejects mainnet before signing', async () => {
+test('Varial reads the actual network and rejects mainnet before signing', async () => {
   const api = transport({ network: async () => ({ network: 'PUBLIC', networkPassphrase: Networks.PUBLIC }), sign: async () => assert.fail('must not sign') })
   await assert.rejects(signWithKit(api, 'freighter-extension', build().toXDR(), address, Networks.TESTNET), /Testnet/)
 })
@@ -68,6 +68,15 @@ test('invalid public keys and rejected connections are not treated as connected'
 const receipt = { wallet: 'xbull', kind: 'claim-convert', account: address, hash: 'a'.repeat(64) }
 const assets = { usdc: { code: 'USDC', issuer: recipient }, phpt: { code: 'PHPT', issuer: recipient } }
 const manifest = { network: 'Stellar Testnet', assets, receipts: [receipt] }
+test('Varial receipts and historical Freighter receipts remain valid after the rebrand', () => {
+  for (const wallet of ['varial', 'freighter']) {
+    const input = { ...manifest, receipts: [{ ...receipt, wallet }] }
+    assert.deepEqual(verificationManifest(input), input)
+  }
+  assert.throws(() => verificationManifest({ ...manifest, receipts: [
+    { ...receipt, wallet: 'varial' }, { ...receipt, wallet: 'freighter' },
+  ] }), /twice/)
+})
 const operations = [
   { type: 'claim_claimable_balance', source_account: address, claimant: address },
   { type: 'path_payment_strict_send', source_account: address, from: address, to: address, source_asset_code: 'USDC', source_asset_issuer: recipient, asset_code: 'PHPT', asset_issuer: recipient, amount: '50', destination_min: '49' },

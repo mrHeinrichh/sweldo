@@ -35,12 +35,12 @@ async function bounded<T>(request: Promise<T>, milliseconds: number, signal?: Ab
 async function transport(): Promise<KitTransport> {
   kitPromise ??= (async () => {
     const { StellarWalletsKit } = await import('@creit.tech/stellar-wallets-kit/sdk')
-    const { FreighterModule } = await import('@creit.tech/stellar-wallets-kit/modules/freighter')
+    const { VarialModule } = await import('@creit.tech/stellar-wallets-kit/modules/varial')
     const { xBullModule } = await import('@creit.tech/stellar-wallets-kit/modules/xbull')
-    StellarWalletsKit.init({ modules: [new FreighterModule(), new xBullModule()], network: Networks.TESTNET })
+    StellarWalletsKit.init({ modules: [new VarialModule(), new xBullModule()], network: Networks.TESTNET })
     const api: KitTransport = {
       async address(kind, requestAccess) {
-        StellarWalletsKit.setWallet(kind === 'xbull' ? 'xbull' : 'freighter')
+        StellarWalletsKit.setWallet(kind === 'xbull' ? 'xbull' : 'varial')
         if (kind === 'freighter-extension' && !await StellarWalletsKit.selectedModule.isAvailable()) throw new FreighterMissingError()
         return requestAccess
           ? StellarWalletsKit.fetchAddress()

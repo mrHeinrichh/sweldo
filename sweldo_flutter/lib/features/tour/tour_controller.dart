@@ -30,7 +30,7 @@ class TourStep {
 
 /// The guide's position and the widgets it can point at.
 class TourController extends ChangeNotifier {
-  TourController({required this.steps, LocalStore? store}) : _store = store;
+  TourController({required this.steps, this._store});
 
   static const _seenKey = 'sweldo-tour-seen-v1';
 

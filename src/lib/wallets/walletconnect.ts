@@ -3,7 +3,7 @@ import { getSdkError } from '@walletconnect/utils'
 import type { SessionTypes } from '@walletconnect/types'
 import type { WalletAccount } from './types'
 
-// Freighter Mobile over WalletConnect v2. Freighter Mobile implements the
+// Varial Mobile over WalletConnect v2. Varial Mobile implements the
 // `stellar` namespace: `stellar_signXDR` takes `{ xdr }` and returns
 // `{ signedXDR }`, on the `stellar:testnet` chain. Its deep-link scheme is
 // `freighterwallet://`.
@@ -25,37 +25,37 @@ const isIOS = () => /iPhone|iPad|iPod/i.test(navigator.userAgent)
 
 const FREIGHTER_PACKAGE = 'org.stellar.freighterwallet'
 export const FREIGHTER_STORES = {
-  ios: 'https://apps.apple.com/app/freighter/id6743947720',
+  ios: 'https://apps.apple.com/app/varial-wallet/id6743947720',
   android: `https://play.google.com/store/apps/details?id=${FREIGHTER_PACKAGE}`,
 }
 
-/** Where to get Freighter on this device: the App Store, Google Play, or freighter.app. */
+/** Where to get Varial on this device: the App Store, Google Play, or varialwallet.com. */
 export function freighterStoreUrl() {
   if (isIOS()) return FREIGHTER_STORES.ios
   if (isAndroid()) return FREIGHTER_STORES.android
-  return 'https://www.freighter.app/'
+  return 'https://varialwallet.com/'
 }
 
 export function freighterStoreName() {
   if (isIOS()) return 'the App Store'
   if (isAndroid()) return 'Google Play'
-  return 'freighter.app'
+  return 'varialwallet.com'
 }
 
 /**
- * Freighter's registered WalletConnect link (its `mobile.native` entry in the
+ * Varial's registered WalletConnect link (its `mobile.native` entry in the
  * WalletConnect registry). The app only pairs when the link contains it, so
  * the generic `freighterwallet://wc?uri=` is ignored.
  */
 const FREIGHTER_NATIVE_LINK = 'freighterwallet://wc-redirect'
 
-/** Opens Freighter Mobile, with a pairing link when one is given. */
+/** Opens Varial Mobile, with a pairing link when one is given. */
 export function freighterDeepLink(pairingUri?: string) {
   return pairingUri ? `${FREIGHTER_NATIVE_LINK}?uri=${encodeURIComponent(pairingUri)}` : 'freighterwallet://'
 }
 
 /**
- * Opens the Freighter app on this phone. When it isn't installed, sends the
+ * Opens the Varial app on this phone. When it isn't installed, sends the
  * person to the store instead: Android does this exactly through an intent
  * fallback; on iOS the page never hands over to the app, so we follow up.
  */
@@ -81,7 +81,7 @@ export function openFreighter(pairingUri?: string, { storeFallback = true } = {}
       window.removeEventListener('pagehide', onPageHide)
     }
     if (left) return done()
-    // Still here, visible and not behind a system prompt: Freighter isn't installed.
+    // Still here, visible and not behind a system prompt: Varial isn't installed.
     if (Date.now() - started >= 2500 && document.visibilityState === 'visible' && document.hasFocus()) {
       done()
       window.location.href = FREIGHTER_STORES.ios
@@ -97,7 +97,7 @@ const disconnectListeners = new Set<() => void>()
 
 function client() {
   const projectId = walletConnectProjectId()
-  if (!projectId) throw new Error('Freighter Mobile needs a WalletConnect project ID in VITE_WALLETCONNECT_PROJECT_ID.')
+  if (!projectId) throw new Error('Varial Mobile needs a WalletConnect project ID in VITE_WALLETCONNECT_PROJECT_ID.')
   clientPromise ??= SignClient.init({
     projectId,
     metadata: {
@@ -124,7 +124,7 @@ function toAccount(active: SessionTypes.Struct): WalletAccount {
   // CAIP-10: stellar:<network>:<address>
   const parsed = accounts.map((account) => account.split(':')).filter((parts) => parts.length === 3)
   const pick = parsed.find((parts) => `${parts[0]}:${parts[1]}` === TESTNET_CHAIN) ?? parsed[0]
-  if (!pick) throw new Error('Freighter did not share a Stellar account. Try pairing again.')
+  if (!pick) throw new Error('Varial did not share a Stellar account. Try pairing again.')
   const testnet = `${pick[0]}:${pick[1]}` === TESTNET_CHAIN
   return { address: pick[2], network: testnet ? 'TESTNET' : 'PUBLIC' }
 }
@@ -134,7 +134,7 @@ export function onMobileDisconnect(listener: () => void) {
   return () => disconnectListeners.delete(listener)
 }
 
-/** Reconnects to a Freighter Mobile session from a previous visit. */
+/** Reconnects to a Varial Mobile session from a previous visit. */
 export async function restoreMobile(): Promise<WalletAccount | null> {
   if (!walletConnectProjectId()) return null
   const instance = await client()
@@ -146,7 +146,7 @@ export async function restoreMobile(): Promise<WalletAccount | null> {
 
 /**
  * Starts pairing. `onUri` receives the WalletConnect URI to show as a QR
- * code or open as a deep link; the promise resolves once Freighter approves.
+ * code or open as a deep link; the promise resolves once Varial approves.
  */
 export async function connectMobile(onUri: (uri: string) => void, signal?: AbortSignal): Promise<WalletAccount> {
   const instance = await client()
@@ -165,8 +165,8 @@ export async function connectMobile(onUri: (uri: string) => void, signal?: Abort
     approval().then(resolve, (error: unknown) => {
       const message = (error as { message?: string })?.message ?? ''
       reject(new Error(/reject/i.test(message)
-        ? 'You declined the connection in Freighter.'
-        : `Freighter did not connect: ${message || 'the request expired'}`))
+        ? 'You declined the connection in Varial.'
+        : `Varial did not connect: ${message || 'the request expired'}`))
     })
   })
   session = approved
@@ -174,14 +174,14 @@ export async function connectMobile(onUri: (uri: string) => void, signal?: Abort
 }
 
 export function mobileAccount(): WalletAccount {
-  if (!session) throw new Error('The Freighter app is not connected. Pair it again.')
+  if (!session) throw new Error('The Varial app is not connected. Pair it again.')
   return toAccount(session)
 }
 
 export async function signWithMobile(xdr: string) {
   const instance = await client()
-  if (!session) throw new Error('The Freighter app is not connected. Pair it again.')
-  // Bring Freighter forward on a phone so the request is in front of the person.
+  if (!session) throw new Error('The Varial app is not connected. Pair it again.')
+  // Bring Varial forward on a phone so the request is in front of the person.
   if (isMobileBrowser()) openFreighter(undefined, { storeFallback: false })
   try {
     const result = await instance.request<{ signedXDR?: string }>({
@@ -189,12 +189,12 @@ export async function signWithMobile(xdr: string) {
       chainId: TESTNET_CHAIN,
       request: { method: SIGN_METHOD, params: { xdr } },
     })
-    if (!result?.signedXDR) throw new Error('Freighter returned no signature. Nothing was submitted.')
+    if (!result?.signedXDR) throw new Error('Varial returned no signature. Nothing was submitted.')
     return result.signedXDR
   } catch (error) {
     const message = (error as { message?: string })?.message ?? ''
-    if (/reject/i.test(message)) throw new Error('You declined the request in Freighter. Nothing was submitted.')
-    throw error instanceof Error ? error : new Error(message || 'Freighter could not sign the transaction.')
+    if (/reject/i.test(message)) throw new Error('You declined the request in Varial. Nothing was submitted.')
+    throw error instanceof Error ? error : new Error(message || 'Varial could not sign the transaction.')
   }
 }
 

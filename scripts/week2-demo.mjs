@@ -45,7 +45,7 @@ async function prepare() {
     throw new Error('This command submits a Testnet transaction. Use: npm run week2:prepare -- --testnet --worker G... [--delay 60]')
   }
   const worker = option('--worker')
-  if (!StrKey.isValidEd25519PublicKey(worker ?? '')) throw new Error('Supply the public G... address of your Freighter Testnet worker account.')
+  if (!StrKey.isValidEd25519PublicKey(worker ?? '')) throw new Error('Supply the public G... address of your Varial Testnet worker account.')
   const delay = args.includes('--delay') ? Number(option('--delay')) : 60
   if (!Number.isInteger(delay) || delay < 10 || delay > 3600) throw new Error('Delay must be an integer from 10 to 3600 seconds.')
   const { evidence, usdc, phpt } = await configuration()
@@ -55,10 +55,10 @@ async function prepare() {
     throw new Error('Week 1 state and evidence disagree. Re-run Week 1 setup before preparing the demo.')
   }
   const employer = state.accounts.worker
-  if (worker === employer.publicKey) throw new Error('Use a separate Freighter worker account for the demo.')
+  if (worker === employer.publicKey) throw new Error('Use a separate Varial worker account for the demo.')
   const signingKey = Keypair.fromSecret(employer.secret)
   if (signingKey.publicKey() !== employer.publicKey || employer.publicKey !== evidence.accounts.worker) throw new Error('Invalid local demo funding account.')
-  await server.loadAccount(worker).catch(() => { throw new Error('The worker account must be funded on Testnet first. Use Friendbot in Freighter.') })
+  await server.loadAccount(worker).catch(() => { throw new Error('The worker account must be funded on Testnet first. Use Friendbot in Varial.') })
   const account = await server.loadAccount(employer.publicKey)
   const line = account.balances.find((balance) => balance.asset_code === usdc.code && balance.asset_issuer === usdc.issuer)
   if (!line || Number(line.balance) - Number(line.selling_liabilities ?? '0') < 25) throw new Error('The Week 1 worker needs at least 25 test-USDC. Re-run Week 1 setup.')
@@ -82,7 +82,7 @@ async function prepare() {
   }
   await save('week2-payout.json', receipt)
   console.log(JSON.stringify(receipt, null, 2))
-  console.log('Now open the LOCAL app, connect this worker in Freighter Testnet, choose For employees, and wait for payday.')
+  console.log('Now open the LOCAL app, connect this worker in Varial Testnet, choose For employees, and wait for payday.')
 }
 
 async function verify() {

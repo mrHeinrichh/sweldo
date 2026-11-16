@@ -13,9 +13,8 @@ import 'signing_guard.dart';
 class WalletRepository implements TransactionSigner {
   WalletRepository({
     required List<WalletConnector> connectors,
-    required LocalStore store,
-  }) : _connectors = {for (final c in connectors) c.kind: c},
-       _store = store {
+    required this._store,
+  }) : _connectors = {for (final c in connectors) c.kind: c} {
     for (final connector in connectors) {
       connector.disconnects.listen((_) {
         if (_active == connector) {

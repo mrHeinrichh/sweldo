@@ -118,7 +118,7 @@ class _ConnectPrompt extends StatelessWidget {
                 runSpacing: SwSpace.xs,
                 children: const [
                   _Hint(icon: SwIcons.extension, text: 'Browser extension'),
-                  _Hint(icon: SwIcons.phone, text: 'Freighter or xBull'),
+                  _Hint(icon: SwIcons.phone, text: 'Varial or xBull'),
                 ],
               ),
             ],

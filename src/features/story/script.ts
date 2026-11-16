@@ -15,10 +15,10 @@ export type StoryScene = {
 
 export const SCENES: StoryScene[] = [
   { start: 0, end: 4.5, lines: ['Ana gets paid', 'every month.', 'Some paydays came late.'], quietFrom: 2, caption: 'Ana is paid monthly, and some of her paydays came late.' },
-  { start: 4.5, end: 11, lines: ['Her employer', 'locks six paydays.', 'One signature does it.'], quietFrom: 2, caption: 'Her employer opens Sweldo, sets six monthly payouts, and signs once in Freighter. The payroll is locked.' },
+  { start: 4.5, end: 11, lines: ['Her employer', 'locks six paydays.', 'One signature does it.'], quietFrom: 2, caption: 'Her employer opens Sweldo, sets six monthly payouts, and signs once in Varial. The payroll is locked.' },
   { start: 11, end: 16, lines: ['The money waits', 'on Stellar.', 'Not with Sweldo.', 'Not with her employer.'], quietFrom: 2, caption: 'Six time-locked payouts sit on the Stellar ledger. Nobody can take them early.' },
   { start: 16, end: 21, lines: ['Payday arrives', 'to the second.'], quietFrom: 99, caption: "On Ana's phone, the countdown reaches zero and her first payout turns ready to claim." },
-  { start: 21, end: 26.5, lines: ['One tap.', 'Her pay is in her wallet.'], quietFrom: 1, caption: 'Ana taps Claim, approves in Freighter, and 300 USDC lands in her wallet. The payout is stamped claimed.' },
+  { start: 21, end: 26.5, lines: ['One tap.', 'Her pay is in her wallet.'], quietFrom: 1, caption: 'Ana taps Claim, approves in Varial, and 300 USDC lands in her wallet. The payout is stamped claimed.' },
   { start: 26.5, end: 31.5, lines: ['Next month,', 'she takes pesos.', 'Converted on Stellar.'], quietFrom: 2, caption: "The next payday she claims as PHPT, converted through Stellar's built-in exchange in the same transaction." },
   { start: 31.5, end: 36, lines: ['Sweldo.', 'Payroll that keeps its promise.'], quietFrom: 1, caption: 'Sweldo: payroll that keeps its promise.' },
 ]

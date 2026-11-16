@@ -32,7 +32,7 @@
   <text x="787" y="393">No valid route or trustline</text><text x="787" y="419" class="small">Show error; nothing is claimed</text>
   <path d="M305 445 V480" class="arrow"/>
   <rect x="70" y="493" width="470" height="80" class="box"/>
-  <text x="305" y="521" class="strong">Review quote and approve in Freighter</text>
+  <text x="305" y="521" class="strong">Review quote and approve in Varial</text>
   <text x="305" y="548">Expected PHPT / 1% limit / 60-second quote</text>
   <path d="M305 573 V608" class="arrow"/>
   <rect x="70" y="620" width="470" height="83" class="box"/>

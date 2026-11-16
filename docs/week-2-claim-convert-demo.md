@@ -6,7 +6,7 @@ The latest SOW assigns Week 2: "Integrate claim-and-convert into worker claim fl
 
 Expected output: a worker claims a scheduled payout and receives PHPT through the claim/conversion flow, with a recording and transaction hash.
 
-This change uses the existing Week 1 controlled test-USDC and PHPT assets and liquidity. Both assets have no real value; test-USDC is not Circle-issued USDC. Only the configured issuers are supported. Freighter signs the worker's transaction.
+This change uses the existing Week 1 controlled test-USDC and PHPT assets and liquidity. Both assets have no real value; test-USDC is not Circle-issued USDC. Only the configured issuers are supported. Varial signs the worker's transaction.
 
 Week 3 dashboard reconstruction/CSV, Week 4 Wallets Kit/deployment, and new Soroban contracts are outside this change.
 
@@ -24,7 +24,7 @@ Editable Mermaid version:
 
 ```mermaid
 flowchart TD
-    A[Open local app; connect worker Freighter on Testnet] --> B[Read scheduled payout from Horizon]
+    A[Open local app; connect worker Varial on Testnet] --> B[Read scheduled payout from Horizon]
     B --> C{Worker payout unlocked?}
     C -->|No| D[Show countdown; wait and refresh]
     D --> B
@@ -34,7 +34,7 @@ flowchart TD
     F -->|Valid route| H[Preview expected PHPT and 1% slippage minimum]
     H --> I{Quote still valid?}
     I -->|No| E
-    I -->|Yes| J[Worker approves one transaction in Freighter]
+    I -->|Yes| J[Worker approves one transaction in Varial]
     J --> K[Add missing trustlines, claim payout, path-pay to worker]
     K -->|All operations succeed| L[Receive PHPT; show hash and explorer link]
     K -->|Slippage or liquidity failure| M[Operations roll back; refresh quote]
@@ -72,15 +72,15 @@ If Week 1 evidence is missing or Testnet was reset, restore the Week 1 setup fir
 
 ## 3. Prepare a payout (Testnet transaction)
 
-1. Switch Freighter to **Testnet** and select a separate worker wallet you control.
-2. Fund the worker with Testnet XLM using Freighter's Testnet funding option/Friendbot. It needs XLM for up to two trustline reserves and fees.
+1. Switch Varial to **Testnet** and select a separate worker wallet you control.
+2. Fund the worker with Testnet XLM using Varial's Testnet funding option/Friendbot. It needs XLM for up to two trustline reserves and fees.
 3. Copy the worker's public `G...` address and replace the placeholder:
 
 ```bash
 npm run week2:prepare -- --testnet --worker YOUR_WORKER_PUBLIC_ADDRESS --delay 60
 ```
 
-The command uses the disposable Week 1 worker as the demo employer, locks **25 test-USDC** for your Freighter worker, and schedules its unlock 60 seconds ahead. The demo funding key stays in the ignored local Week 1 state file and is never served to the browser. No contract is changed.
+The command uses the disposable Week 1 worker as the demo employer, locks **25 test-USDC** for your Varial worker, and schedules its unlock 60 seconds ahead. The demo funding key stays in the ignored local Week 1 state file and is never served to the browser. No contract is changed.
 
 Expected output: worker/employer public addresses, balance ID, unlock time, funding hash, and Stellar Expert link. These public details are saved to `.sweldo-local/week2-payout.json`.
 
@@ -88,7 +88,7 @@ Each run creates a new 25 test-USDC payout. Do not rerun just to refresh the pag
 
 ## 4. Claim in the browser (Testnet transaction)
 
-1. Choose **For employees** and connect the same worker in Freighter.
+1. Choose **For employees** and connect the same worker in Varial.
 2. Find **25 USDC** in the timeline. Before payday, it shows **LOCKED** and a countdown.
 3. After payday, allow a ledger to close, then select **Claim as PHPT**.
 4. Review the quote. At the Week 1 1:1 offer:
@@ -102,7 +102,7 @@ Each run creates a new 25 test-USDC payout. Do not rerun just to refresh the pag
 | Quote lifetime | 60 seconds |
 | Trustlines | Missing USDC/PHPT listed, or "Trustlines ready" |
 
-5. Select **Claim and convert** and approve in Freighter before expiry. Missing trustlines are included in the same transaction.
+5. Select **Claim and convert** and approve in Varial before expiry. Missing trustlines are included in the same transaction.
 6. Expect **Payout claimed as PHPT**, the amount, full hash, copy button, and **Verify on Stellar Expert**. The payout disappears from the active list.
 7. Open the explorer receipt and confirm `Claim Claimable Balance` followed by `Path Payment Strict Send`. Any needed `Change Trust` operations appear first.
 
@@ -142,9 +142,9 @@ The read-only verifier binds the claim and conversion to your prepared payout, w
 | --- | --- | --- |
 | Missing trustlines | Use a fresh funded worker | Missing lines shown; added with approval |
 | Quote expiry | Wait over 60 seconds in the preview | Confirm disables; refresh available |
-| Rejected signature | Cancel Freighter approval | Nothing submitted; payout remains |
-| Wrong network | Switch Freighter after opening preview | Signing stops with a Testnet message |
-| Changed wallet | Switch Freighter account before approval | Signing stops; reconnect intended worker |
+| Rejected signature | Cancel Varial approval | Nothing submitted; payout remains |
+| Wrong network | Switch Varial after opening preview | Signing stops with a Testnet message |
+| Changed wallet | Switch Varial account before approval | Signing stops; reconnect intended worker |
 | No liquidity | Automated local no-route test | No signing; clear liquidity message |
 | Slippage | Automated local `op_under_dest_min` test | Error explains 1% limit and asks to refresh |
 | Low reserve | Automated local `op_low_reserve` test | Error asks for Testnet XLM |
@@ -154,10 +154,10 @@ Controlled local fixtures test no-liquidity/slippage UI behavior without changin
 
 ## Recording script (2-3 minutes)
 
-1. Show the local URL and Freighter Testnet account: "Week 2 connects our conversion setup to a worker's scheduled payout."
+1. Show the local URL and Varial Testnet account: "Week 2 connects our conversion setup to a worker's scheduled payout."
 2. Show the prepared payout and funding hash: "This 25 test-USDC payout unlocks at payday."
 3. Show the PHPT quote, minimum, and trustlines: "The worker reviews the conversion before approving it."
-4. Approve in Freighter: "Trustline setup, claim, and conversion are submitted together." Do not record secret keys or recovery phrases.
+4. Approve in Varial: "Trustline setup, claim, and conversion are submitted together." Do not record secret keys or recovery phrases.
 5. Show the success receipt and PHPT wallet balance: "The worker received PHPT, with the transaction hash here."
 6. Show explorer claim/path-payment operations and the four verifier PASS lines.
 

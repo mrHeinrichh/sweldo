@@ -8,7 +8,7 @@ abstract final class StellarNetwork {
   static final Network network = Network.TESTNET;
   static String get passphrase => network.networkPassphrase;
 
-  /// Freighter reports the active network by name.
+  /// Varial reports the active network by name.
   static const walletNetworkName = 'TESTNET';
 
   /// WalletConnect CAIP-2 chain id.

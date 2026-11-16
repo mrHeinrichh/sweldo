@@ -4,7 +4,7 @@ import 'horizon_client.dart';
 
 /// Anything that can put a user's signature on a transaction envelope.
 ///
-/// Implemented by the wallet feature (Freighter extension or Freighter Mobile).
+/// Implemented by the wallet feature (Varial extension or Varial Mobile).
 /// Keys never enter Sweldo: the wallet receives unsigned XDR and returns it
 /// signed.
 abstract interface class TransactionSigner {

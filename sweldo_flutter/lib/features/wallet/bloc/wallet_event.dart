@@ -18,7 +18,7 @@ final class WalletDisconnectRequested extends WalletEvent {
   const WalletDisconnectRequested();
 }
 
-/// The pairing sheet was closed before Freighter approved.
+/// The pairing sheet was closed before Varial approved.
 final class WalletPairingDismissed extends WalletEvent {
   const WalletPairingDismissed();
 }

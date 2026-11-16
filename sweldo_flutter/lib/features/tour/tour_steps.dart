@@ -31,7 +31,7 @@ const sweldoTour = [
     target: 'connect',
     title: 'Connect wallet',
     body:
-        'Choose Freighter or xBull. On phones, Freighter pairs through '
+        'Choose Varial or xBull. On phones, Varial pairs through '
         'WalletConnect. Sweldo never sees your keys.',
   ),
   TourStep(

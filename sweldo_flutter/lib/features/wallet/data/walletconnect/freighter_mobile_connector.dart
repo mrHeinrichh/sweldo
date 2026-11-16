@@ -17,9 +17,9 @@ import '../../domain/wallet_session.dart';
 import '../wallet_connector.dart';
 import 'freighter_links.dart';
 
-/// Freighter Mobile (iOS/Android) over WalletConnect v2.
+/// Varial Mobile (iOS/Android) over WalletConnect v2.
 ///
-/// Freighter Mobile implements the `stellar` namespace with
+/// Varial Mobile implements the `stellar` namespace with
 /// `stellar_signXDR` (params `{xdr}`, result `{signedXDR}`) on the
 /// `stellar:testnet` chain. Pairing opens the app through its registered
 /// native link, `freighterwallet://wc-redirect` ([FreighterLinks]).
@@ -48,7 +48,7 @@ class FreighterMobileConnector extends WalletConnector {
   @override
   String? get unavailableReason => isAvailable
       ? null
-      : 'Pairing with the Freighter app isn’t switched on for this version '
+      : 'Pairing with the Varial app isn’t switched on for this version '
             'of Sweldo yet.';
 
   @override
@@ -93,7 +93,7 @@ class FreighterMobileConnector extends WalletConnector {
         .toList();
     if (parsed.isEmpty) {
       throw const WalletException(
-        'Freighter did not share a Stellar account. Try pairing again.',
+        'Varial did not share a Stellar account. Try pairing again.',
       );
     }
     final testnet = parsed.firstWhere(
@@ -140,7 +140,7 @@ class FreighterMobileConnector extends WalletConnector {
     final uri = response.uri;
     if (uri != null) {
       onPairingUri?.call(uri);
-      // Freighter, or its store page if it isn't installed.
+      // Varial, or its store page if it isn't installed.
       if (_onPhone) unawaited(FreighterLinks.open(FreighterLinks.pair(uri)));
     }
     try {
@@ -149,11 +149,11 @@ class FreighterMobileConnector extends WalletConnector {
       );
     } on TimeoutException {
       throw const WalletException(
-        'Freighter did not approve the connection in time. Try again.',
+        'Varial did not approve the connection in time. Try again.',
       );
     } on JsonRpcError catch (error) {
       throw WalletException(
-        _rpcMessage(error, 'Freighter declined to connect'),
+        _rpcMessage(error, 'Varial declined to connect'),
       );
     }
     return _toSession(_session!);
@@ -164,7 +164,7 @@ class FreighterMobileConnector extends WalletConnector {
     final session = _session;
     if (session == null) {
       throw const WalletException(
-        'The Freighter app is not connected. Pair it again.',
+        'The Varial app is not connected. Pair it again.',
       );
     }
     return _toSession(session);
@@ -180,7 +180,7 @@ class FreighterMobileConnector extends WalletConnector {
     final session = _session;
     if (session == null) {
       throw const WalletException(
-        'The Freighter app is not connected. Pair it again.',
+        'The Varial app is not connected. Pair it again.',
       );
     }
     final pending = client.request(
@@ -191,7 +191,7 @@ class FreighterMobileConnector extends WalletConnector {
         params: {'xdr': envelopeXdr},
       ),
     );
-    // Bring Freighter forward so the request is in front of the person.
+    // Bring Varial forward so the request is in front of the person.
     if (_onPhone) {
       unawaited(FreighterLinks.open(FreighterLinks.app, storeFallback: false));
     }
@@ -201,17 +201,17 @@ class FreighterMobileConnector extends WalletConnector {
       result = await pending.timeout(const Duration(minutes: 5));
     } on TimeoutException {
       throw const WalletException(
-        'Freighter did not answer in time. Nothing was submitted.',
+        'Varial did not answer in time. Nothing was submitted.',
       );
     } on JsonRpcError catch (error) {
       throw WalletException(
-        _rpcMessage(error, 'Freighter could not sign the transaction'),
+        _rpcMessage(error, 'Varial could not sign the transaction'),
       );
     }
     final signed = result is Map ? result['signedXDR'] : null;
     if (signed is! String || signed.isEmpty) {
       throw const WalletException(
-        'Freighter returned no signature. Nothing was submitted.',
+        'Varial returned no signature. Nothing was submitted.',
       );
     }
     return signed;
@@ -237,7 +237,7 @@ class FreighterMobileConnector extends WalletConnector {
     final message = error.message;
     if (message == null || message.isEmpty) return '$label.';
     if (message.toLowerCase().contains('reject')) {
-      return 'You declined the request in Freighter. Nothing was submitted.';
+      return 'You declined the request in Varial. Nothing was submitted.';
     }
     return '$label: $message';
   }
