@@ -1,7 +1,7 @@
-import { getAddress, getNetwork, isAllowed, isConnected, requestAccess, setAllowed, signTransaction } from '@stellar/freighter-api'
+import { getAddress, getNetwork, isAllowed, isConnected, requestAccess, setAllowed, signTransaction } from '@stellar/varial-sdk'
 import type { WalletAccount } from './types'
 
-// The Freighter browser extension, reached through @stellar/freighter-api.
+// The Varial browser extension, reached through @stellar/varial-sdk.
 
 type FreighterError = { code?: number; message?: string; ext?: string[] }
 
@@ -17,7 +17,7 @@ function withTimeout<T>(promise: Promise<T>, milliseconds: number): Promise<T> {
   return Promise.race([
     promise,
     new Promise<T>((_, reject) => {
-      window.setTimeout(() => reject(new Error('Freighter did not respond. Unlock the extension and try again.')), milliseconds)
+      window.setTimeout(() => reject(new Error('Varial did not respond. Unlock the extension and try again.')), milliseconds)
     }),
   ])
 }
@@ -27,9 +27,9 @@ function wait(milliseconds: number) {
 }
 
 export const FREIGHTER_MISSING =
-  'Freighter is not available. Install it from freighter.app, or open chrome://extensions, enable Freighter, set Site access to “On all sites”, unlock it, then reload this tab.'
+  'Varial is not available. Install it from varialwallet.com, or open chrome://extensions, enable Varial, set Site access to “On all sites”, unlock it, then reload this tab.'
 
-/** Raised when no Freighter extension could be reached at all. */
+/** Raised when no Varial extension could be reached at all. */
 export class FreighterMissingError extends Error {
   readonly walletMissing = true
   constructor() { super(FREIGHTER_MISSING) }
@@ -62,11 +62,11 @@ export async function connectExtension(): Promise<WalletAccount> {
     if (!detected) throw new FreighterMissingError()
     throw error
   }
-  const access = unwrap(accessResult, 'Could not connect Freighter')
+  const access = unwrap(accessResult, 'Could not connect Varial')
   let address = access.address
 
   if (!address) {
-    // Some Freighter builds answer requestAccess without a key until this site is on the allow list.
+    // Some Varial builds answer requestAccess without a key until this site is on the allow list.
     // Allow the site, then read the active account directly.
     try {
       const allowed = await withTimeout(isAllowed(), 3_000)
@@ -78,19 +78,19 @@ export async function connectExtension(): Promise<WalletAccount> {
     }
   }
   const network = unwrap(await withTimeout(getNetwork(), 5_000), 'Could not read wallet network')
-  if (!address) throw new Error('Freighter did not return an account. Open the Freighter popup, unlock it, make sure an account is selected, approve the connection request for this site, then try again.')
+  if (!address) throw new Error('Varial did not return an account. Open the Varial popup, unlock it, make sure an account is selected, approve the connection request for this site, then try again.')
   return { address, network: network.network, networkPassphrase: network.networkPassphrase }
 }
 
 /** The extension's active account and network, without prompting. */
 export async function extensionAccount(): Promise<WalletAccount> {
-  const active = unwrap(await withTimeout(getAddress(), 5_000), 'Could not read the Freighter account')
-  if (!active.address) throw new Error('Freighter is locked. Unlock it and reconnect.')
+  const active = unwrap(await withTimeout(getAddress(), 5_000), 'Could not read the Varial account')
+  if (!active.address) throw new Error('Varial is locked. Unlock it and reconnect.')
   const network = unwrap(await withTimeout(getNetwork(), 5_000), 'Could not read wallet network')
   return { address: active.address, network: network.network, networkPassphrase: network.networkPassphrase }
 }
 
-/** Reconnects silently when this site is already on Freighter's allow list. */
+/** Reconnects silently when this site is already on Varial's allow list. */
 export async function restoreExtension(): Promise<WalletAccount | null> {
   if (!(await detectFreighter())) return null
   try {
@@ -105,7 +105,7 @@ export async function restoreExtension(): Promise<WalletAccount | null> {
 export async function signWithExtension(xdr: string, address: string, networkPassphrase: string) {
   const signed = unwrap(
     await withTimeout(signTransaction(xdr, { address, networkPassphrase }), 5 * 60_000),
-    'Freighter could not sign the transaction',
+    'Varial could not sign the transaction',
   )
   if (!signed.signedTxXdr) throw new Error('Signing was cancelled. Nothing was submitted.')
   return signed.signedTxXdr

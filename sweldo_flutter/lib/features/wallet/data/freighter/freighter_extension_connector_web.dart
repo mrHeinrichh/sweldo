@@ -9,11 +9,11 @@ import '../wallet_connector.dart';
 import 'freighter_js.dart';
 
 const _freighterMissing =
-    'Freighter is not available. Install it from freighter.app, or open '
-    'chrome://extensions, enable Freighter, set Site access to “On all '
+    'Varial is not available. Install it from varialwallet.com, or open '
+    'chrome://extensions, enable Varial, set Site access to “On all '
     'sites”, unlock it, then reload this tab.';
 
-/// Freighter browser extension, reached through `@stellar/freighter-api`.
+/// Varial browser extension, reached through `@stellar/varial-sdk`.
 ///
 /// A direct port of `connectWallet` in the React app, including its retries:
 /// the extension injects its content script after page load, so one early
@@ -32,7 +32,7 @@ class FreighterExtensionConnector extends WalletConnector {
 
   @override
   String? get unavailableReason => _phone
-      ? 'Browser extensions aren’t available on phones. Use the Freighter app.'
+      ? 'Browser extensions aren’t available on phones. Use the Varial app.'
       : null;
 
   FreighterApi get _api {
@@ -50,7 +50,7 @@ class FreighterExtensionConnector extends WalletConnector {
     return call(_api).toDart.timeout(
       timeout,
       onTimeout: () => throw const WalletException(
-        'Freighter did not respond. Unlock the extension and try again.',
+        'Varial did not respond. Unlock the extension and try again.',
       ),
     );
   }
@@ -108,11 +108,11 @@ class FreighterExtensionConnector extends WalletConnector {
       }
       rethrow;
     }
-    _unwrap(access, 'Could not connect Freighter');
+    _unwrap(access, 'Could not connect Varial');
     var address = access.address ?? '';
 
     if (address.isEmpty) {
-      // Some Freighter builds answer requestAccess without a key until the
+      // Some Varial builds answer requestAccess without a key until the
       // site is on the allow list. Allow it, then read the active account.
       try {
         final allowed = await _call(
@@ -138,7 +138,7 @@ class FreighterExtensionConnector extends WalletConnector {
     final network = await _network();
     if (address.isEmpty) {
       throw const WalletException(
-        'Freighter did not return an account. Open Freighter, unlock it, '
+        'Varial did not return an account. Open Varial, unlock it, '
         'select an account, approve this site, then try again.',
       );
     }
@@ -167,12 +167,12 @@ class FreighterExtensionConnector extends WalletConnector {
         (api) => api.getAddress(),
         timeout: const Duration(seconds: 5),
       ),
-      'Could not read the Freighter account',
+      'Could not read the Varial account',
     );
     final address = active.address ?? '';
     if (address.isEmpty) {
       throw const WalletException(
-        'Freighter is locked. Unlock it and reconnect.',
+        'Varial is locked. Unlock it and reconnect.',
       );
     }
     return WalletSession(
@@ -199,7 +199,7 @@ class FreighterExtensionConnector extends WalletConnector {
         ),
         timeout: const Duration(minutes: 5),
       ),
-      'Freighter could not sign the transaction',
+      'Varial could not sign the transaction',
     );
     final signed = result.signedTxXdr;
     if (signed == null || signed.isEmpty) {

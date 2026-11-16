@@ -35,7 +35,7 @@ class WalletState extends Equatable {
   final WalletSession? session;
   final WalletKind? connectingKind;
 
-  /// WalletConnect URI to show while pairing with the Freighter app.
+  /// WalletConnect URI to show while pairing with the Varial app.
   final Uri? pairingUri;
   final String? xlmBalance;
   final WalletMessage? message;

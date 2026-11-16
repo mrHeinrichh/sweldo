@@ -54,13 +54,12 @@ class ConversionState extends Equatable {
 /// One claim-and-convert dialog: quote, refresh, sign.
 class ConversionBloc extends Bloc<ConversionEvent, ConversionState> {
   ConversionBloc({
-    required ConversionRepository repository,
+    required this._repository,
     required this.address,
     required this.balanceId,
     required this.pair,
     DateTime Function()? clock,
-  }) : _repository = repository,
-       _now = clock ?? DateTime.now,
+  }) : _now = clock ?? DateTime.now,
        super(const ConversionState(loading: true)) {
     on<ConversionQuoteRequested>(_onQuoteRequested);
     on<ConversionConfirmed>(_onConfirmed);

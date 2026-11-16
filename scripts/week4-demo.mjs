@@ -56,7 +56,7 @@ async function verify() {
     console.log(`${passed ? 'PASS' : 'FAIL'} ${receipt.wallet}: ${receipt.kind}\n${receipts.at(-1).url}`)
   }
   const coverage = {
-    freighter: receipts.some((r) => r.passed && r.wallet === 'freighter'),
+    varial: receipts.some((r) => r.passed && (r.wallet === 'varial' || r.wallet === 'freighter')),
     xbull: receipts.some((r) => r.passed && r.wallet === 'xbull'),
     funding: receipts.some((r) => r.passed && r.kind === 'funding'),
     claimAndConvert: receipts.some((r) => r.passed && r.kind === 'claim-convert'),

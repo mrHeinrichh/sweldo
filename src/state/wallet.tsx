@@ -103,7 +103,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       const missing = error instanceof wallets.FreighterMissingError
       toast(friendlyError(error), {
         isError: true,
-        action: missing ? { label: 'Get Freighter', href: 'https://www.freighter.app/' } : undefined,
+        action: missing ? { label: 'Get Varial', href: 'https://varialwallet.com/' } : undefined,
       })
     }
   }, [toast])

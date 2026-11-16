@@ -15,11 +15,9 @@ part 'wallet_state.dart';
 
 class WalletBloc extends Bloc<WalletEvent, WalletState> {
   WalletBloc({
-    required WalletRepository repository,
-    required HorizonClient horizon,
-  }) : _repository = repository,
-       _horizon = horizon,
-       super(const WalletState()) {
+    required this._repository,
+    required this._horizon,
+  }) : super(const WalletState()) {
     on<WalletStarted>(_onStarted);
     on<WalletConnectRequested>(_onConnectRequested);
     on<WalletDisconnectRequested>(_onDisconnectRequested);

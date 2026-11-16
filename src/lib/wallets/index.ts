@@ -58,8 +58,8 @@ export async function restore(): Promise<WalletState | null> {
 }
 
 export const WALLET_KINDS: Record<WalletKind, { title: string; description: string }> = {
-  'freighter-extension': { title: 'Freighter extension', description: 'Sign in this browser with the Freighter extension.' },
-  'freighter-mobile': { title: 'Freighter app', description: 'Approve each payroll action in Freighter on your phone.' },
+  'freighter-extension': { title: 'Varial extension', description: 'Sign in this browser with the Varial extension.' },
+  'freighter-mobile': { title: 'Varial app', description: 'Approve each payroll action in Varial on your phone.' },
   xbull: { title: 'xBull', description: 'Connect your xBull wallet on Stellar Testnet.' },
 }
 
@@ -67,9 +67,9 @@ export const WALLET_KINDS: Record<WalletKind, { title: string; description: stri
 export function unavailableReason(kind: WalletKind): string | null {
   if (kind === 'xbull') return null
   if (kind === 'freighter-extension') {
-    return isMobileBrowser() ? 'Browser extensions aren’t available on phones. Use the Freighter app.' : null
+    return isMobileBrowser() ? 'Browser extensions aren’t available on phones. Use the Varial app.' : null
   }
-  return mobileAvailable() ? null : 'Pairing with the Freighter app isn’t switched on for this version of Sweldo yet.'
+  return mobileAvailable() ? null : 'Pairing with the Varial app isn’t switched on for this version of Sweldo yet.'
 }
 
 export function walletAvailable(kind: WalletKind) {

@@ -22,7 +22,7 @@ Sweldo uses this information to connect your wallet, show Testnet balances and p
 
 To provide these features, the app communicates with:
 
-- **Wallet providers**, including Freighter and xBull, to connect wallets and request transaction signatures. Freighter Mobile connections use the **Reown/WalletConnect** service to establish and maintain a wallet session.
+- **Wallet providers**, including Varial and xBull, to connect wallets and request transaction signatures. Varial Mobile connections use the **Reown/WalletConnect** service to establish and maintain a wallet session.
 - **Stellar Testnet services**, including Horizon, Soroban RPC, and, if you request test funding, Friendbot, to read public ledger information, submit signed transactions, and fund a Testnet account.
 - **Stellar Expert** if you choose to open an external transaction or account explorer link.
 

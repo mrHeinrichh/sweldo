@@ -48,6 +48,6 @@ class SubmissionUncertainException extends AppException {
 class WalletException extends AppException {
   const WalletException(super.message, {this.walletMissing = false});
 
-  /// True when no Freighter extension could be reached at all.
+  /// True when no Varial extension could be reached at all.
   final bool walletMissing;
 }

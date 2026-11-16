@@ -4,16 +4,16 @@ import '../../../core/stellar/stellar_network.dart';
 
 /// Supported wallet transports.
 enum WalletKind {
-  /// The Freighter browser extension (Flutter web).
+  /// The Varial browser extension (Flutter web).
   freighterExtension(
-    'Freighter extension',
-    'Sign in this browser with the Freighter extension.',
+    'Varial extension',
+    'Sign in this browser with the Varial extension.',
   ),
 
-  /// The Freighter app for iOS and Android, paired through WalletConnect.
+  /// The Varial app for iOS and Android, paired through WalletConnect.
   freighterMobile(
-    'Freighter app',
-    'Approve each payroll action in Freighter on your phone.',
+    'Varial app',
+    'Approve each payroll action in Varial on your phone.',
   ),
   xbull('xBull', 'Connect and approve Testnet transactions with xBull.');
 

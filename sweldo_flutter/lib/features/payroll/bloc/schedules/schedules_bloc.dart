@@ -16,11 +16,10 @@ part 'schedules_state.dart';
 class SchedulesBloc extends Bloc<SchedulesEvent, SchedulesState> {
   SchedulesBloc({
     required ScheduleStore store,
-    required PayrollRepository payroll,
+    required this._payroll,
     required WalletRepository wallet,
     DateTime Function()? clock,
   }) : _store = store,
-       _payroll = payroll,
        _now = clock ?? DateTime.now,
        super(const SchedulesState(schedules: [])) {
     on<SchedulesWalletChanged>((event, emit) async {

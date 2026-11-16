@@ -53,7 +53,7 @@ function ConnectPrompt() {
         </div>
         <div className="connect-hints">
           <span><Puzzle size={14} /><span className="t-caption">Browser extension</span></span>
-          <span><Smartphone size={14} /><span className="t-caption">Freighter app</span></span>
+          <span><Smartphone size={14} /><span className="t-caption">Varial app</span></span>
         </div>
       </Panel>
     </div>

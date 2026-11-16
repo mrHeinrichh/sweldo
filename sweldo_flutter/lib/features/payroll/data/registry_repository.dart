@@ -27,13 +27,11 @@ class RegistryProof {
 class RegistryRepository {
   RegistryRepository({
     required this.contractId,
-    required HorizonClient horizon,
-    required TransactionSubmitter submitter,
+    required this._horizon,
+    required this._submitter,
     SorobanServer? soroban,
     Random? random,
-  }) : _horizon = horizon,
-       _submitter = submitter,
-       _soroban = soroban ?? SorobanServer(StellarNetwork.sorobanRpcUrl),
+  }) : _soroban = soroban ?? SorobanServer(StellarNetwork.sorobanRpcUrl),
        _random = random ?? Random.secure();
 
   final String contractId;

@@ -46,7 +46,7 @@ abstract final class StoryScript {
       quietFrom: 2,
       caption:
           'Her employer opens Sweldo, sets six monthly payouts, and signs '
-          'once in Freighter. The payroll is locked.',
+          'once in Varial. The payroll is locked.',
     ),
     StoryScene(
       start: 11,
@@ -76,7 +76,7 @@ abstract final class StoryScript {
       lines: ['One tap.', 'Her pay is in her wallet.'],
       quietFrom: 1,
       caption:
-          'Ana taps Claim, approves in Freighter, and 300 USDC lands in '
+          'Ana taps Claim, approves in Varial, and 300 USDC lands in '
           'her wallet. The payout is stamped claimed.',
     ),
     StoryScene(

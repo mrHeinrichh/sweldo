@@ -14,7 +14,7 @@ Parity requirement: user-facing updates must be implemented and tested in both R
 | Employer payroll recovery | Horizon history, effects and live balances | Same ledger-backed fields |
 | Cancellation | Verified future balances only | Verified future balances only |
 | CSV or pasted roster | Preview then apply | Preview then apply |
-| Freighter | Kit extension / configured WalletConnect | Kit extension on web / configured mobile WalletConnect |
+| Varial | Kit extension / configured WalletConnect | Kit extension on web / configured mobile WalletConnect |
 | xBull | Stellar Wallets Kit | Shared Kit on web / isolated wallet approval window on phones |
 | Signing guards | Testnet, account, unchanged hash, valid signature | Shared Kit plus Dart guards |
 | Explorer receipts | Actual successful hashes | Actual successful hashes |
@@ -41,7 +41,7 @@ For a phone, run `flutter devices`, then:
 flutter run -d YOUR_DEVICE_ID --dart-define-from-file=config/testnet.local.json
 ```
 
-Replace the placeholder with the device ID Flutter prints. Freighter mobile needs a valid `WALLETCONNECT_PROJECT_ID` in the local config and Freighter installed. Browser extensions are intentionally not offered on phones. Use dedicated Testnet wallets, never the grant-payment wallet. Never paste recovery phrases or passwords into Sweldo, a CSV, recordings or source control.
+Replace the placeholder with the device ID Flutter prints. Varial mobile needs a valid `WALLETCONNECT_PROJECT_ID` in the local config and Varial installed. Browser extensions are intentionally not offered on phones. Use dedicated Testnet wallets, never the grant-payment wallet. Never paste recovery phrases or passwords into Sweldo, a CSV, recordings or source control.
 
 React: http://localhost:5174/. Built Flutter preview: http://localhost:5180/. Use `localhost` rather than `127.0.0.1` for the xBull extension: its HTTP content-script permissions cover only the localhost hostname. These are local hosts, not new deployments of getsweldo.com. Manual signed tests still communicate with public Stellar Testnet.
 
@@ -85,7 +85,7 @@ Switching the dropdown changes the new draft's units without converting the nume
 
 ## 3. Connect, Fund and Claim
 
-1. Choose **Connect wallet**, then Freighter or xBull.
+1. Choose **Connect wallet**, then Varial or xBull.
 2. Use the employer/worker roles and funded Testnet prerequisites in the [Week 4 website demo](week-4-wallets-demo.md). The employer cannot be its own employee.
 3. Confirm the public key and Testnet, review a small payroll and approve in the wallet.
 4. Record the successful funding receipt, not only an approval dialog.
@@ -97,7 +97,7 @@ Expected: controlled USDC converts atomically into PHPT at least equal to the qu
 
 On native xBull, the isolated page opens at `wallet.xbull.app`. If no wallet is configured, the **Open xBull wallet** globe control opens its setup page in that same wallet context. Set up a dedicated Testnet wallet yourself, cancel the pending request and reconnect. Native WebView wallet storage is separate from Safari/Chrome, not an automatic connection to an installed xBull wallet. Sweldo registers no result handler or key-reading script in that remote wallet page. The close control cancels the request. This path still needs owner-approved signing before claiming full native wallet verification.
 
-The native xBull adapter is a Testnet integration with third-party wallet code in an embedded context, not a hardened production wallet container. Never use a production wallet or real funds in it. Freighter's external mobile app remains the existing native WalletConnect option.
+The native xBull adapter is a Testnet integration with third-party wallet code in an embedded context, not a hardened production wallet container. Never use a production wallet or real funds in it. Varial's external mobile app remains the existing native WalletConnect option.
 
 ## 4. Negative Checks
 
@@ -116,7 +116,7 @@ flutter build web --dart-define-from-file=config/testnet.local.json
 flutter build apk --debug --dart-define-from-file=config/testnet.local.json
 ```
 
-96 Flutter tests pass, including asset selection, asset-specific payroll submission/proof, mixed-asset totals, stale balance reads, responsive dropdown checks, and zero-balance-only funding prompts. React has 75 automated tests across Weeks 2-4, including rendering the actual funding view with explicit test account states and no live wallet. React and Flutter web builds compile; Android/iOS simulator compilation was verified before the asset selector update, not rerun for this UI change. Earlier browser QA exercised the bundled Freighter/xBull Kit modules and Flutter's Freighter JS interop against mocked wallet bridges, including Testnet signature checks and mainnet rejection. Android emulator QA opened xBull's real connection page and cancelled without entering keys or submitting transactions. A [web demo recording](https://drive.google.com/file/d/1b8a5aGYPnLdT1uSq54mbWJX-d-z0HCRu/view?usp=sharing) is available; final wallet-by-wallet receipt verification and physical-phone testing remain pending.
+96 Flutter tests pass, including asset selection, asset-specific payroll submission/proof, mixed-asset totals, stale balance reads, responsive dropdown checks, and zero-balance-only funding prompts. React has 76 automated tests across Weeks 2-4, including rendering the actual funding view with explicit test account states and no live wallet. React and Flutter web builds compile; Android/iOS simulator compilation was verified before the asset selector update, not rerun for this UI change. Earlier browser QA exercised the bundled Varial/xBull Kit modules and Flutter's Varial JS interop against mocked wallet bridges, including Testnet signature checks and mainnet rejection. Android emulator QA opened xBull's real connection page and cancelled without entering keys or submitting transactions. A [web demo recording](https://drive.google.com/file/d/1b8a5aGYPnLdT1uSq54mbWJX-d-z0HCRu/view?usp=sharing) is available; final wallet-by-wallet receipt verification and physical-phone testing remain pending.
 
 The default iOS simulator build on this Mac fails because the iCloud-backed Documents folder re-adds Finder metadata to generated framework bundles. Compilation succeeded with Xcode build products outside that folder:
 

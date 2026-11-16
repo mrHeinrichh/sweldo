@@ -1,6 +1,7 @@
 import { StrKey } from '@stellar/stellar-sdk'
 
-type Receipt = { wallet: 'freighter' | 'xbull'; kind: 'funding' | 'claim-convert' | 'cancellation' | 'registry'; account: string; hash: string }
+// Keep accepting historical Freighter receipts after the Varial rebrand.
+type Receipt = { wallet: 'varial' | 'freighter' | 'xbull'; kind: 'funding' | 'claim-convert' | 'cancellation' | 'registry'; account: string; hash: string }
 export type VerificationManifest = {
   network: 'Stellar Testnet'
   assets: { usdc: { code: 'USDC'; issuer: string }; phpt: { code: 'PHPT'; issuer: string } }
@@ -18,7 +19,7 @@ export function verificationManifest(input: unknown): VerificationManifest {
   }
   const seen = new Set<string>()
   for (const receipt of value.receipts) {
-    if (!receipt || !['freighter', 'xbull'].includes(receipt.wallet)
+    if (!receipt || !['varial', 'freighter', 'xbull'].includes(receipt.wallet)
       || !['funding', 'claim-convert', 'cancellation', 'registry'].includes(receipt.kind)
       || !StrKey.isValidEd25519PublicKey(receipt.account)
       || !/^[a-f0-9]{64}$/i.test(receipt.hash)) throw new Error('Each receipt needs a supported wallet, action, public G key and 64-character hash.')

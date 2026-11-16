@@ -22,13 +22,11 @@ part 'payouts_state.dart';
 /// The employee's vesting timeline and claims.
 class PayoutsBloc extends Bloc<PayoutsEvent, PayoutsState> {
   PayoutsBloc({
-    required PayoutsRepository repository,
-    required ClaimHistoryStore historyStore,
+    required this._repository,
+    required this._historyStore,
     required WalletRepository wallet,
     DateTime Function()? clock,
-  }) : _repository = repository,
-       _historyStore = historyStore,
-       _now = clock ?? DateTime.now,
+  }) : _now = clock ?? DateTime.now,
        super(const PayoutsState()) {
     on<PayoutsWalletChanged>(_onWalletChanged);
     on<PayoutsRefreshRequested>(_onRefreshRequested);

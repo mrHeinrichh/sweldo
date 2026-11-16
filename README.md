@@ -18,7 +18,7 @@ Sweldo uses Soroban for registry/auditability and Stellar native operations for 
 
 ## Run locally
 
-Requirements: Node 22.18+, [Freighter](https://www.freighter.app/) or [xBull](https://xbull.app/) for the local Week 4 flow, and a funded Testnet account.
+Requirements: Node 22.18+, [Varial](https://varialwallet.com/) or [xBull](https://xbull.app/) for the local Week 4 flow, and a funded Testnet account.
 
 ```bash
 npm install
@@ -60,10 +60,10 @@ Current Testnet deployment:
 
 ## Demo flow
 
-1. Open **For employers** and connect a funded Freighter Testnet account.
+1. Open **For employers** and connect a funded Varial Testnet account.
 2. Enter the employee's public key, amount, tranche count, and cadence.
 3. For a live demo, select **Every minute** and fund the schedule.
-4. Switch Freighter to the employee account and open **For employees**.
+4. Switch Varial to the employee account and open **For employees**.
 5. Watch the countdown reach zero, then claim the unlocked balance.
 6. Follow the Stellar Expert links to verify every transaction and balance on-chain.
 
@@ -103,14 +103,28 @@ npm run week3:inspect -- EMPLOYER_PUBLIC_KEY
 
 See [the Week 3 flowchart and step-by-step demo](docs/week-3-ledger-payroll-demo.md) and [sample roster](docs/week-3-roster-example.csv). The inspect command only reads Horizon. Worker names are optional session labels; recovered payroll state uses public addresses and ledger records. The development server runs locally; wallet-signed demo transactions use Stellar Testnet.
 
-## Connect with Freighter Mobile
+## November 2026 maintenance update
 
-**Connect wallet** offers both Freighters. The browser extension works as before. The Freighter app pairs
+Freighter is now **Varial**. Sweldo uses Stellar Wallets Kit **2.8.0** with its `VarialModule` and the official `@stellar/varial-sdk` **7.0.0**. Wallet labels, installation links, signing prompts, tours and both clients’ guides use the new name. Existing session IDs, the `freighterwallet://wc-redirect` mobile scheme and Android package remain compatible; receipt verification accepts both `varial` and historical `freighter` entries. See the [official rebrand announcement](https://stellar.org/blog/foundation-news/freighter-is-now-varial).
+
+```bash
+npm ci
+npm test
+npm run lint
+npm run build
+npm run flutter:wallet-kit
+```
+
+`npm test` runs all Week 2–4 regression suites. The Flutter wallet-kit build also refreshes the vendored Varial SDK used for silent extension detection. Copy `.env.example` to `.env.local` for XLM defaults, or run `npm run week4:configure` after preparing the controlled Testnet assets to enable USDC/PHPT conversion. Flutter’s compatible dependencies are refreshed; use Flutter 3.47+ / Dart 3.13+. The Cupertino page-transition import is included for the current SDK. See the [maintenance verification notes](docs/maintenance-2026-11.md) for checks and remaining items.
+
+## Connect with Varial Mobile
+
+**Connect wallet** offers Varial and xBull. The browser extension works as before. The Varial app pairs
 over WalletConnect: on a computer Sweldo shows a QR code to scan from the app; on a phone it offers
-only the Freighter app and opens it directly through Freighter's registered link
-(`freighterwallet://wc-redirect`). If Freighter isn't installed, the phone goes to the App Store or
+only the Varial app and opens it directly through Varial's registered link
+(`freighterwallet://wc-redirect`). If Varial isn't installed, the phone goes to the App Store or
 Google Play instead. Signatures then happen in the app; the action button reads
-"Confirm in Freighter…" while one is waiting. A paired session survives reloads.
+"Confirm in Varial…" while one is waiting. A paired session survives reloads.
 
 Pairing needs `VITE_WALLETCONNECT_PROJECT_ID`; without it the option shows as not set up.
 
@@ -146,8 +160,8 @@ Apple's Human Interface Guidelines), what to avoid, tokens, signature elements, 
 The web app and the Flutter app (`sweldo_flutter/`) render the same screens: the same tokens and
 type scale, fonts (Archivo, IBM Plex Mono, Manrope for the wordmark), Lucide icons, copy, layout
 breakpoints (Tailwind's `sm`/`md`/`lg`/`xl`), motion and story film. They differ only in how they
-reach Freighter: the web uses the browser extension or a WalletConnect QR code for the Freighter
-app, while iOS and Android open the Freighter app directly.
+reach Varial: the web uses the browser extension or a WalletConnect QR code for the Varial
+app, while iOS and Android open the Varial app directly.
 
 The React source mirrors the Flutter structure:
 
@@ -158,7 +172,7 @@ The React source mirrors the Flutter structure:
 | `app/` (shell, hash router) | `app/shell/`, `app/router/` |
 | `state/` (wallet, account, payroll form, schedules, payouts) | `features/*/bloc/` |
 | `features/home`, `payroll`, `payouts`, `conversion`, `story`, `tour`, `wallet` | `features/*/view/` |
-| `lib/` (Stellar, Freighter, claim-and-convert) | `features/*/data/`, `core/stellar/` |
+| `lib/` (Stellar, Varial, claim-and-convert) | `features/*/data/`, `core/stellar/` |
 
 ## Configuration
 
@@ -167,9 +181,9 @@ The React source mirrors the Flutter structure:
 | `VITE_ASSET_CODE` | Issued asset code such as `USDC` |
 | `VITE_ASSET_ISSUER` | Issuer's Stellar public key |
 | `VITE_PHPT_ISSUER` | Controlled PHPT Testnet issuer; enables conversion for the configured USDC issuer |
-| `VITE_WALLETCONNECT_PROJECT_ID` | Turns on **Freighter Mobile**: a QR code to scan on desktop, a deep link on phones. Free at [dashboard.reown.com](https://dashboard.reown.com); add your site's domain there. |
+| `VITE_WALLETCONNECT_PROJECT_ID` | Turns on **Varial Mobile**: a QR code to scan on desktop, a deep link on phones. Free at [dashboard.reown.com](https://dashboard.reown.com); add your site's domain there. |
 
-Both variables are required for issued-asset mode. If omitted, Sweldo uses native XLM. Employees must enable the issued asset before claiming.
+`VITE_ASSET_CODE` and `VITE_ASSET_ISSUER` are both required for issued-asset mode. If omitted, Sweldo uses native XLM. Employees must enable the issued asset before claiming.
 
 ## Architecture
 
@@ -177,7 +191,7 @@ The app is fully client-side (React on the web, Flutter on phones). The web clie
 
 ## Week 4 Local Wallets Kit Validation
 
-The web integration uses Stellar Wallets Kit 2.7.1 with Freighter and xBull, preserving the configured Freighter Mobile adapter. Shared Testnet/account/envelope checks cover existing payroll, claim-and-convert, cancellation and Soroban proof signing. The existing Flutter app has matching ledger reconstruction, CSV import and wallet/signing behavior; see the [Flutter parity demo](docs/flutter-web-parity-demo.md). No new contract or mainnet work is included.
+The web integration uses Stellar Wallets Kit 2.8.0 with Varial and xBull, preserving the configured Varial Mobile adapter. Shared Testnet/account/envelope checks cover existing payroll, claim-and-convert, cancellation and Soroban proof signing. The existing Flutter app has matching ledger reconstruction, CSV import and wallet/signing behavior; see the [Flutter parity demo](docs/flutter-web-parity-demo.md). No new contract or mainnet work is included.
 
 ```bash
 npm run week4:configure
@@ -185,7 +199,7 @@ npm run week4:test
 npm run week4:dev -- --port 5174 --strictPort
 ```
 
-Open the local address printed by Vite. Follow the [Week 4 demo and test guide](docs/week-4-wallets-demo.md), [flowchart](docs/week-4-flowchart.svg), and [verification package checklist](docs/week-4-verification-package.md). xBull cannot report its current network; every request explicitly targets Testnet and returned signatures are verified for that network. The Week 4 source and guides are collected on `heinric/week-4-wallets-kit` in [PR #8](https://github.com/mrHeinrichh/sweldo/pull/8). A [demo recording](https://drive.google.com/file/d/1b8a5aGYPnLdT1uSq54mbWJX-d-z0HCRu/view?usp=sharing) is available. The updated deployment and final wallet-by-wallet transaction-hash verification remain pending; publishing the source does not complete those checks.
+Open the local address printed by Vite. Follow the [Week 4 demo and test guide](docs/week-4-wallets-demo.md), [flowchart](docs/week-4-flowchart.svg), and [verification package checklist](docs/week-4-verification-package.md). xBull cannot report its current network; every request explicitly targets Testnet and returned signatures are verified for that network. The Week 4 source and guides were merged in [PR #8](https://github.com/mrHeinrichh/sweldo/pull/8). A [demo recording](https://drive.google.com/file/d/1b8a5aGYPnLdT1uSq54mbWJX-d-z0HCRu/view?usp=sharing) is available. The updated deployment and final wallet-by-wallet transaction-hash verification remain pending; publishing the source does not complete those checks.
 
 ## Safety and current scope
 
@@ -201,8 +215,8 @@ Open the local address printed by Vite. Follow the [Week 4 demo and test guide](
 ## Roadmap
 
 - Local anchor integrations and real regional assets
-- Claim-and-convert through Stellar path payments
-- Bulk payroll import and team administration
+- Broader asset support and liquidity for claim-and-convert
+- Persistent team administration and payroll roles
 - Team-level offboarding policies and approval workflows
 - Mainnet hardening, compliance, and independent security review
 

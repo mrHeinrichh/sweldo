@@ -60,21 +60,21 @@ function WalletChoices() {
       </div>
       {wallet.status === 'connecting' && <Button label="Cancel connection" icon={<X />} tone="secondary" onClick={wallet.dismissPairing} />}
       <p className="t-body-sm m0 connect-get">
-        <ExternalLink href={freighterStoreUrl()} label={`Get Freighter on ${freighterStoreName()}`} className="connect-get-link" />
+        <ExternalLink href={freighterStoreUrl()} label={`Get Varial on ${freighterStoreName()}`} className="connect-get-link" />
         <ExternalLink href="https://xbull.app" label="Get xBull" className="connect-get-link" />
       </p>
     </div>
   )
 }
 
-/** WalletConnect pairing: a QR code for Freighter on another device, plus a direct link on phones. */
+/** WalletConnect pairing: a QR code for Varial on another device, plus a direct link on phones. */
 function PairingView({ uri }: { uri: string }) {
   const wallet = useWallet()
   const toast = useToast()
   const onPhone = isMobileBrowser()
   const [svg, setSvg] = useState('')
 
-  // On a phone, hand straight over to Freighter (or its store page if it isn't installed).
+  // On a phone, hand straight over to Varial (or its store page if it isn't installed).
   useEffect(() => { if (onPhone) openFreighter(uri) }, [onPhone, uri])
 
   useEffect(() => {
@@ -85,13 +85,13 @@ function PairingView({ uri }: { uri: string }) {
 
   return (
     <div className="connect-view">
-      <h2 className="t-title m0">Approve in Freighter</h2>
+      <h2 className="t-title m0">Approve in Varial</h2>
       <p className="t-body-sm m0 connect-lede">
         {onPhone
-          ? `Freighter should open with a connection request. If it isn't installed, you'll go to ${freighterStoreName()} to get it.`
-          : 'Open Freighter on your phone, tap the scanner, and point it at this code. Then approve the connection on Testnet.'}
+          ? `Varial should open with a connection request. If it isn't installed, you'll go to ${freighterStoreName()} to get it.`
+          : 'Open Varial on your phone, tap the scanner, and point it at this code. Then approve the connection on Testnet.'}
       </p>
-      {/* On a phone the link opens Freighter directly; the code is for scanning from another device. */}
+      {/* On a phone the link opens Varial directly; the code is for scanning from another device. */}
       {!onPhone && <div className="connect-qr" role="img" aria-label="WalletConnect pairing code" dangerouslySetInnerHTML={{ __html: svg }} />}
       <p className="connect-waiting t-caption m0"><LoaderCircle size={14} className="spin" /> Waiting for approval</p>
       <div className="connect-actions">
@@ -103,7 +103,7 @@ function PairingView({ uri }: { uri: string }) {
             try { await navigator.clipboard.writeText(uri); toast('Pairing link copied.') } catch { toast('Copy is unavailable here. Select the text instead.') }
           }}
         />
-        {onPhone && <Button label="Open Freighter" icon={<SquareArrowOutUpRight />} onClick={() => openFreighter(uri)} />}
+        {onPhone && <Button label="Open Varial" icon={<SquareArrowOutUpRight />} onClick={() => openFreighter(uri)} />}
         <Button label="Back" tone="secondary" onClick={wallet.dismissPairing} />
       </div>
     </div>

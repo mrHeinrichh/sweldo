@@ -1,8 +1,8 @@
 # Sweldo — Flutter app
 
 The Flutter edition of Sweldo: non-custodial payroll on Stellar Testnet for web, iOS and Android.
-It follows the React payroll workflows, uses BLoC for state, and supports **Freighter and xBull**.
-Web uses the shared Stellar Wallets Kit adapter. Phones use Freighter WalletConnect and an isolated xBull approval window. See the [parity test guide](../docs/flutter-web-parity-demo.md) for exact steps and verification limits.
+It follows the React payroll workflows, uses BLoC for state, and supports **Varial and xBull**.
+Web uses the shared Stellar Wallets Kit adapter. Phones use Varial WalletConnect and an isolated xBull approval window. See the [parity test guide](../docs/flutter-web-parity-demo.md) for exact steps and verification limits.
 
 <p>
   <img src="docs/media/app-icon.png" width="120" alt="Sweldo app icon">
@@ -16,7 +16,7 @@ Web uses the shared Stellar Wallets Kit adapter. Phones use Freighter WalletConn
 
 | Feature | React app | Flutter app |
 | --- | --- | --- |
-| Connect Freighter, show XLM balance, wrong-network warning | ✓ | ✓ (extension on web, Freighter app on phones) |
+| Connect Varial, show XLM balance, wrong-network warning | ✓ | ✓ (extension on web, Varial app on phones) |
 | Batch payroll: many employees × up to 50 payouts in **one** transaction | ✓ | ✓ |
 | Mutually exclusive employee / employer time predicates | ✓ | ✓ |
 | Soroban Payroll Registry proof (`record_schedule`) | ✓ | ✓ |
@@ -35,7 +35,7 @@ Web uses the shared Stellar Wallets Kit adapter. Phones use Freighter WalletConn
 
 ## Run it
 
-Requirements: Flutter 3.41+ (Dart 3.11+). Configuration is passed with `--dart-define-from-file`:
+Requirements: Flutter 3.47+ (Dart 3.13+). Configuration is passed with `--dart-define-from-file`:
 
 | File | Use |
 | --- | --- |
@@ -65,7 +65,7 @@ Keys in the config files:
 | `SWELDO_ASSET_CODE` / `SWELDO_ASSET_ISSUER` | Issued payroll asset. Leave blank for XLM. |
 | `SWELDO_PHPT_ISSUER` | Enables claim-and-convert for the configured test-USDC issuer. |
 | `SWELDO_REGISTRY_CONTRACT_ID` | Soroban Payroll Registry contract. Blank skips registry proofs. |
-| `WALLETCONNECT_PROJECT_ID` | Turns on pairing with the Freighter mobile app. Get one at [dashboard.reown.com](https://dashboard.reown.com). Keep it in a `config/*.local.json` file (git-ignored). |
+| `WALLETCONNECT_PROJECT_ID` | Turns on pairing with the Varial mobile app. Get one at [dashboard.reown.com](https://dashboard.reown.com). Keep it in a `config/*.local.json` file (git-ignored). |
 
 Presentation mode opens straight into the story and plays it, which is useful for pitches and
 screen recordings:
@@ -83,17 +83,17 @@ flutter test
 
 ## Wallet compatibility
 
-**Web: Freighter and xBull.** `web/index.html` loads the generated Stellar Wallets Kit bundle before Flutter starts. `KitWalletConnector` calls the same adapter and signing guards used by React through `dart:js_interop`. xBull receives an explicit Testnet passphrase and never silently prompts during startup. The vendored Freighter API remains available to existing installation checks.
+**Web: Varial and xBull.** `web/index.html` loads the generated Stellar Wallets Kit bundle before Flutter starts. `KitWalletConnector` calls the same adapter and signing guards used by React through `dart:js_interop`. xBull receives an explicit Testnet passphrase and never silently prompts during startup. The vendored Varial API remains available to existing installation checks.
 
-**iOS / Android: Freighter mobile app.** `FreighterMobileConnector` pairs over WalletConnect v2
+**iOS / Android: Varial mobile app.** `FreighterMobileConnector` pairs over WalletConnect v2
 (Reown Sign) on the `stellar:testnet` chain and signs with `stellar_signXDR`
-(`{xdr}` → `{signedXDR}`), the method Freighter Mobile implements. On a phone it opens
-`freighterwallet://wc?uri=…` (in the native app and in phone browsers); on desktop it shows a QR
-code to scan with the app. Freighter returns
+(`{xdr}` → `{signedXDR}`), the method Varial Mobile implements. On a phone it opens
+`freighterwallet://wc-redirect?uri=…` (in the native app and in phone browsers); on desktop it shows a QR
+code to scan with the app. Varial returns
 to `sweldo://`, which only brings the app forward (Flutter's automatic deep-link routing is
 switched off so a wallet hand-off never changes the page).
 
-Keys never enter Sweldo. Every transaction is built in the app, signed in Freighter, then submitted
+Keys never enter Sweldo. Every transaction is built in the app, signed in Varial, then submitted
 to Horizon.
 
 ## Guide
@@ -125,7 +125,7 @@ lib/
     utils/                       stroop-exact amounts, formatting
     widgets/                     buttons, notices, payroll paper, stamps, punch slots
   features/
-    wallet/                      Freighter extension + Freighter mobile connectors, WalletBloc
+    wallet/                      Varial extension + Varial mobile connectors, WalletBloc
     account/                     Friendbot funding and trustlines (AccountSetupCubit)
     payroll/                     employer: PayrollFormBloc, SchedulesBloc, registry
     payouts/                     employee: PayoutsBloc, timeline, claim history

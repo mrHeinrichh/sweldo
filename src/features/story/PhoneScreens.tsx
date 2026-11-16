@@ -166,7 +166,7 @@ export function EmployerScreen({ g }: { g: number }) {
           ? <PhoneButton label="Payroll locked" color="var(--payday)" icon={<Check size={18} />} />
           : <PhoneButton label="Lock payroll on Stellar" icon={<LockKeyhole size={18} />} tap={lockTap} />}
       </div>
-      <ConfirmSheet visible={sheet} approveTap={approveTap} title="Confirm in Freighter" rows={[['Lock', '1,800 USDC'], ['Payouts', '6, monthly'], ['Network', 'Testnet']]} />
+      <ConfirmSheet visible={sheet} approveTap={approveTap} title="Confirm in Varial" rows={[['Lock', '1,800 USDC'], ['Payouts', '6, monthly'], ['Network', 'Testnet']]} />
     </div>
   )
 }
@@ -247,7 +247,7 @@ export function WorkerScreen({ g }: { g: number }) {
           ))}
         </PayrollPaper>
       </PhoneApp>
-      <ConfirmSheet visible={sheet} approveTap={approveTap} title="Confirm in Freighter" rows={[['Claim', '300 USDC'], ['To', 'Your wallet'], ['Network', 'Testnet']]} />
+      <ConfirmSheet visible={sheet} approveTap={approveTap} title="Confirm in Varial" rows={[['Claim', '300 USDC'], ['To', 'Your wallet'], ['Network', 'Testnet']]} />
     </div>
   )
 }

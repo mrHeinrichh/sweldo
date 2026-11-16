@@ -13,7 +13,7 @@ class FreighterExtensionConnector extends WalletConnector {
   @override
   String? get unavailableReason =>
       'The extension works in the web version of Sweldo. On this device, use '
-      'the Freighter app.';
+      'the Varial app.';
 
   Never _unsupported() => throw WalletException(unavailableReason!);
 

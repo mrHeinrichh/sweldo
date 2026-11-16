@@ -87,11 +87,10 @@ class AccountSetupState extends Equatable {
 /// Drives the "Get free test XLM" and "Enable USDC" prompts.
 class AccountSetupCubit extends Cubit<AccountSetupState> {
   AccountSetupCubit({
-    required AccountRepository repository,
+    required this._repository,
     required WalletRepository wallet,
     required Asset payrollAsset,
-  }) : _repository = repository,
-       _wallet = wallet,
+  }) : _wallet = wallet,
        _asset = payrollAsset,
        super(const AccountSetupState()) {
     _subscription = wallet.sessions.listen(_check);

@@ -91,9 +91,9 @@ Worker names are optional session labels. Because the current funding transactio
 
 ## 4. Import a roster and create a small batch in the UI
 
-Use two worker accounts you control for this demo. Select Testnet in Freighter and fund the employer and worker accounts with free Testnet XLM if needed.
+Use two worker accounts you control for this demo. Select Testnet in Varial and fund the employer and worker accounts with free Testnet XLM if needed.
 
-1. In **Pay your team**, click **Connect wallet** and choose **Freighter extension**. Approve your employer account on Testnet.
+1. In **Pay your team**, click **Connect wallet** and choose **Varial extension**. Approve your employer account on Testnet.
 2. Under **Who are you paying?**, click **Import roster**.
 3. Paste this CSV, replacing both wallet values with your two worker public keys:
 
@@ -126,7 +126,7 @@ Amounts in the import are total payroll amounts, not amounts per payout. Keep on
 ## 5. Observe a worker claim and employer cancellation
 
 1. Keep the employer public key and funding hash available.
-2. Wait for Ana's first payday, then switch Freighter to Ana's Testnet account, disconnect/reconnect Sweldo, and open **My pay**.
+2. Wait for Ana's first payday, then switch Varial to Ana's Testnet account, disconnect/reconnect Sweldo, and open **My pay**.
 3. Claim one unlocked payout through the existing worker flow. Save its claim hash.
 4. Open **Pay your team**, paste the employer public key in **Payroll history**, and click **Load payroll**.
 5. The claimed payout shows **Claimed**, its balance ID remains visible in history, and its **Claim** link opens the receipt. Any other unlocked, unclaimed payout shows **Claimable**.
