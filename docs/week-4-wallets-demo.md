@@ -10,7 +10,7 @@ Expected output:
 
 > Live dApp URL, GitHub PR/code links, 3-5 minute demo, how-it-works notes, and transaction-hash receipt list.
 
-Freighter is now Varial; the SOW’s original wording above is retained. The Week 4 source, dependencies, tests and guides were merged from `heinric/week-4-wallets-kit` in [PR #8](https://github.com/mrHeinrichh/sweldo/pull/8), following the earlier focused signing-guard and funding-error commits. The [supplied demo recording](https://drive.google.com/file/d/1b8a5aGYPnLdT1uSq54mbWJX-d-z0HCRu/view?usp=sharing) shows the local build. The updated deployment, final wallet-by-wallet receipt verification and physical-phone signing evidence remain **pending**. The supplied video is 5:21; the SOW asks for a 3-5 minute final demo. Do not report the complete SOW milestone as externally accepted before the remaining checks are completed.
+Freighter is now Varial; the SOW’s original wording above is retained. The Week 4 source, dependencies, tests and guides were merged from `heinric/week-4-wallets-kit` in [PR #8](https://github.com/mrHeinrichh/sweldo/pull/8), following the earlier focused signing-guard and funding-error commits. The [supplied demo recording](https://drive.google.com/file/d/1b8a5aGYPnLdT1uSq54mbWJX-d-z0HCRu/view?usp=sharing) shows the local build. Git pushes now trigger a Vercel preview; follow the [Vercel deployment check](https://github.com/mrHeinrichh/sweldo/commits/heinric/week-4-wallets-kit) for the exact revision. Final wallet-by-wallet receipt verification and physical-phone signing evidence remain **pending**. The supplied video is 5:21; the SOW asks for a 3-5 minute final demo. Do not report the complete SOW milestone as externally accepted before the remaining checks are completed.
 
 Supported Week 4 kit wallets:
 
@@ -35,7 +35,7 @@ flowchart TD
     H --> J[Receipt and Stellar Expert link]
     J --> K[Fresh-browser Horizon payroll reconstruction]
     K --> L[Local notes, demo recording and receipt checklist]
-    L --> M[PR 8 source release; deployment and receipt verification pending]
+    L --> M[PR 8 merged; Vercel Git preview; receipt verification pending]
 ```
 
 ## 1. Start from the beginning
@@ -228,7 +228,7 @@ Do not use mocked browser QA footage as user onboarding, real wallet approvals o
 - Read-only Horizon reconstruction still recovered the four existing schedules for the public Week 3 employer, including worker-claim and employer-cancellation history. Those are historical receipts, not new Week 4 transactions.
 - Production build and lint passed, with the existing large-bundle and Fast Refresh warnings.
 - `npm audit` reported 25 advisories (13 low, 7 moderate, 5 high) in the installed dependency tree. No broad dependency upgrades were applied as part of this bounded sprint.
-- The empty receipt template was rejected as incomplete, as intended. Real Varial/xBull approvals, fresh receipts, final recording and deployment verification remain pending.
+- The empty receipt template was rejected as incomplete, as intended. Real Varial/xBull approvals, fresh receipts, final recording and reviewer verification of the deployed preview remain pending.
 
 Primary references: [Wallets Kit](https://stellarwalletskit.dev/), [Varial module source](https://github.com/Creit-Tech/Stellar-Wallets-Kit/blob/main/src/sdk/modules/varial.module.ts), [xBull module source](https://github.com/Creit-Tech/Stellar-Wallets-Kit/blob/main/src/sdk/modules/xbull.module.ts).
 

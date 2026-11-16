@@ -199,7 +199,7 @@ npm run week4:test
 npm run week4:dev -- --port 5174 --strictPort
 ```
 
-Open the local address printed by Vite. Follow the [Week 4 demo and test guide](docs/week-4-wallets-demo.md), [flowchart](docs/week-4-flowchart.svg), and [verification package checklist](docs/week-4-verification-package.md). xBull cannot report its current network; every request explicitly targets Testnet and returned signatures are verified for that network. The Week 4 source and guides were merged in [PR #8](https://github.com/mrHeinrichh/sweldo/pull/8). A [demo recording](https://drive.google.com/file/d/1b8a5aGYPnLdT1uSq54mbWJX-d-z0HCRu/view?usp=sharing) is available. The updated deployment and final wallet-by-wallet transaction-hash verification remain pending; publishing the source does not complete those checks.
+Open the local address printed by Vite. Follow the [Week 4 demo and test guide](docs/week-4-wallets-demo.md), [flowchart](docs/week-4-flowchart.svg), and [verification package checklist](docs/week-4-verification-package.md). xBull cannot report its current network; every request explicitly targets Testnet and returned signatures are verified for that network. The Week 4 source and guides were merged in [PR #8](https://github.com/mrHeinrichh/sweldo/pull/8). A [demo recording](https://drive.google.com/file/d/1b8a5aGYPnLdT1uSq54mbWJX-d-z0HCRu/view?usp=sharing) is available. Pushes to this branch trigger a Vercel preview; use the [Vercel deployment check](https://github.com/mrHeinrichh/sweldo/commits/heinric/week-4-wallets-kit) to find the build for the exact revision. Final wallet-by-wallet transaction-hash verification remains pending.
 
 ## Safety and current scope
 

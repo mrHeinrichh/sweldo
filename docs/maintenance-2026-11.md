@@ -33,4 +33,4 @@ Browser wallet checks use generated Testnet keys and intercepted Horizon reads. 
 
 `npm audit fix` applied compatible fixes. npm still reports 29 upstream advisories (11 high, 6 moderate, 12 low), primarily in Wallets Kit’s other-wallet dependency tree. Its proposed forced fix downgrades Wallets Kit to 1.x and is not applied. React lint warnings and large JavaScript chunks remain separate cleanup work.
 
-The supplied Week 4 video and wallet-by-wallet receipts still require manual verification; no sample transaction was relabeled as real evidence. PR #8 is merged. Deployment access and the exact deployed revision are tracked in the delivery response.
+The supplied Week 4 video and wallet-by-wallet receipts still require manual verification; no sample transaction was relabeled as real evidence. PR #8 is merged. GitHub’s existing Vercel integration deploys branch previews on push. Follow the [Vercel deployment check](https://github.com/mrHeinrichh/sweldo/commits/heinric/week-4-wallets-kit) for the exact deployed revision; the delivery response includes the completed build URL.
