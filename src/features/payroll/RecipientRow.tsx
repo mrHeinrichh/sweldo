@@ -1,5 +1,5 @@
 import { forwardRef, useEffect, useId, useRef, useState, type ReactNode } from 'react'
-import { CalendarClock, Check, ChevronDown, CircleAlert, Coins, KeyRound, UserRound, X } from 'lucide-react'
+import { CalendarClock, Check, ChevronDown, CircleAlert, Coins, KeyRound, ScanLine, UserRound, X } from 'lucide-react'
 import { useAccount } from '../../state/account'
 import { payrollAssets } from '../../state/config'
 import { formatAmount, tryUnits } from '../../state/amount'
@@ -7,6 +7,7 @@ import { hasValidAddress, OWN_WALLET_MESSAGE, usePayrollForm, type PayrollRecipi
 import { useWallet } from '../../state/wallet'
 import { plural } from '../../ui/format'
 import { useUp } from '../../ui/hooks'
+import { ScanWalletSheet } from '../wallet/ScanWalletSheet'
 
 /** One employee in the payroll form. */
 export function RecipientRow({ recipient, index, assetLabel, removable, animateIn, disabled, teamChecks = 0 }: {
@@ -19,6 +20,9 @@ export function RecipientRow({ recipient, index, assetLabel, removable, animateI
   const form = usePayrollForm()
   const account = useAccount()
   const totalId = useId()
+  const addressId = useId()
+  const addressInput = useRef<HTMLInputElement>(null)
+  const [scanOpen, setScanOpen] = useState(false)
   const payouts = form.state.payouts
   const [addressTouched, setAddressTouched] = useState(false)
   const [totalTouched, setTotalTouched] = useState(false)
@@ -61,15 +65,30 @@ export function RecipientRow({ recipient, index, assetLabel, removable, animateI
       </InputBox>
     </Field>
   )
+  // A scanned address lands with a brief green pulse, so the eye finds it.
+  const applyScanned = (employee: string) => {
+    change({ employee })
+    setAddressTouched(true)
+    const box = addressBox.current
+    if (!box) return
+    box.classList.remove('scanned')
+    void box.offsetWidth // restart the animation
+    box.classList.add('scanned')
+  }
   const addressField = (
-    <Field label="Wallet address" hint="Required">
+    <div className="field">
+      <span className="field-label"><label className="t-label" htmlFor={addressId}>Wallet address</label><span className="t-caption">Required</span></span>
       <InputBox
         ref={addressBox}
         icon={ownWallet ? <CircleAlert size={18} /> : valid ? <Check size={18} /> : <KeyRound size={18} />}
         iconTone={ownWallet ? 'bad' : valid ? 'good' : undefined}
         error={!!addressError}
+        scan
       >
         <input
+          ref={addressInput}
+          id={addressId}
+          aria-label={`Employee ${index + 1} wallet address`}
           className="mono-input"
           value={recipient.employee}
           placeholder="G…"
@@ -82,9 +101,25 @@ export function RecipientRow({ recipient, index, assetLabel, removable, animateI
           onBlur={() => setAddressTouched(true)}
           onChange={(event) => change({ employee: event.target.value.replace(/\s/g, '').toUpperCase() })}
         />
+        <button
+          type="button"
+          className="input-scan"
+          disabled={disabled}
+          onClick={() => setScanOpen(true)}
+          aria-label={`Scan a wallet QR code for employee ${index + 1}`}
+          title="Scan a wallet QR code"
+        >
+          <ScanLine size={16} aria-hidden /><span>Scan</span>
+        </button>
       </InputBox>
       {addressError && <p key={ownWallet ? 'own' : 'address'} className="field-error" role={ownWallet ? 'alert' : undefined}>{addressError}</p>}
-    </Field>
+      <ScanWalletSheet
+        open={scanOpen}
+        onClose={() => setScanOpen(false)}
+        onAddress={applyScanned}
+        onManual={() => window.setTimeout(() => addressInput.current?.focus(), 240)}
+      />
+    </div>
   )
   const totalField = (
     <div className="field">
@@ -155,10 +190,10 @@ function Field({ label, hint, children }: { label: string; hint?: string; childr
   )
 }
 
-const InputBox = forwardRef<HTMLSpanElement, { icon: ReactNode; iconTone?: 'good' | 'bad'; suffix?: string; error?: boolean; children: ReactNode }>(
-  function InputBox({ icon, iconTone, suffix, error, children }, ref) {
+const InputBox = forwardRef<HTMLSpanElement, { icon: ReactNode; iconTone?: 'good' | 'bad'; suffix?: string; error?: boolean; scan?: boolean; children: ReactNode }>(
+  function InputBox({ icon, iconTone, suffix, error, scan, children }, ref) {
     return (
-      <span ref={ref} className={`input-box ${error ? 'error' : ''}`}>
+      <span ref={ref} className={`input-box ${error ? 'error' : ''} ${scan ? 'has-scan' : ''}`}>
         <span className={`input-icon ${iconTone ?? ''}`}>{icon}</span>
         {children}
         {suffix && <span className="input-suffix t-label">{suffix}</span>}

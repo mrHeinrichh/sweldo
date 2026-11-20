@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -14,6 +15,7 @@ import '../../../../core/theme/typography.dart';
 import '../../../../core/utils/amount.dart';
 import '../../../../core/utils/format.dart';
 import '../../../wallet/bloc/wallet_bloc.dart';
+import '../../../wallet/view/wallet_qr_scanner.dart';
 import '../../bloc/payroll_form/payroll_form_bloc.dart';
 import '../../domain/payroll_recipient.dart';
 
@@ -62,6 +64,37 @@ class _RecipientRowState extends State<RecipientRow> {
   final _totalNode = FocusNode();
   bool _addressTouched = false;
   bool _totalTouched = false;
+  bool _justScanned = false;
+  Timer? _scannedTimer;
+
+  static const _scannedBorder = OutlineInputBorder(
+    borderRadius: BorderRadius.all(SwRadius.field),
+    borderSide: BorderSide(color: SwColors.payday, width: 1.6),
+  );
+
+  Future<void> _scan() async {
+    final address = await showWalletQrScanner(
+      context,
+      onManualEntry: () => Future<void>.delayed(
+        const Duration(milliseconds: 240),
+        () => mounted ? _addressNode.requestFocus() : null,
+      ),
+    );
+    if (!mounted || address == null) return;
+    _scannedTimer?.cancel();
+    setState(() {
+      _address.text = address;
+      _addressTouched = true;
+      _justScanned = true;
+    });
+    _changed(employee: address);
+    _scannedTimer = Timer(
+      SwMotion.of(context, const Duration(milliseconds: 900)),
+      () {
+        if (mounted) setState(() => _justScanned = false);
+      },
+    );
+  }
 
   @override
   void initState() {
@@ -110,6 +143,7 @@ class _RecipientRowState extends State<RecipientRow> {
 
   @override
   void dispose() {
+    _scannedTimer?.cancel();
     _name.dispose();
     _address.dispose();
     _total.dispose();
@@ -180,33 +214,53 @@ class _RecipientRowState extends State<RecipientRow> {
       child: _Shake(
         active: addressError != null,
         trigger: '$ownWallet:${widget.teamChecks}',
-        child: TextField(
-          controller: _address,
-          focusNode: _addressNode,
-          style: SwType.mono.copyWith(color: SwColors.ink, fontSize: 14),
-          autocorrect: false,
-          enableSuggestions: false,
-          inputFormatters: [
-            FilteringTextInputFormatter.deny(RegExp(r'\s')),
-            UpperCaseTextFormatter(),
-          ],
-          decoration: InputDecoration(
-            hintText: 'G…',
-            prefixIcon: _FieldIcon(
-              ownWallet
-                  ? SwIcons.error
-                  : recipient.hasValidAddress
-                  ? SwIcons.check
-                  : SwIcons.key,
-              color: ownWallet
-                  ? SwColors.danger
-                  : recipient.hasValidAddress
-                  ? SwColors.payday
-                  : null,
+        child: LayoutBuilder(
+          builder: (context, field) => TextField(
+            controller: _address,
+            focusNode: _addressNode,
+            style: SwType.mono.copyWith(color: SwColors.ink, fontSize: 14),
+            autocorrect: false,
+            enableSuggestions: false,
+            inputFormatters: [
+              FilteringTextInputFormatter.deny(RegExp(r'\s')),
+              UpperCaseTextFormatter(),
+            ],
+            decoration: InputDecoration(
+              hintText: 'G…',
+              // Scan sits inside the wallet field, like the QR button in a
+              // wallet's send screen.
+              suffixIcon: _ScanButton(
+                employee: widget.index + 1,
+                compact: field.maxWidth < 250,
+                onPressed:
+                    context.select((PayrollFormBloc b) => b.state.submitting)
+                    ? null
+                    : _scan,
+              ),
+              suffixIconConstraints: const BoxConstraints(
+                minWidth: 0,
+                minHeight: 0,
+              ),
+              // A scanned address lands with a brief green border, so the eye
+              // finds it.
+              enabledBorder: _justScanned ? _scannedBorder : null,
+              focusedBorder: _justScanned ? _scannedBorder : null,
+              prefixIcon: _FieldIcon(
+                ownWallet
+                    ? SwIcons.error
+                    : recipient.hasValidAddress
+                    ? SwIcons.check
+                    : SwIcons.key,
+                color: ownWallet
+                    ? SwColors.danger
+                    : recipient.hasValidAddress
+                    ? SwColors.payday
+                    : null,
+              ),
+              errorText: addressError,
             ),
-            errorText: addressError,
+            onChanged: (value) => _changed(employee: value),
           ),
-          onChanged: (value) => _changed(employee: value),
         ),
       ),
     );
@@ -416,6 +470,73 @@ class _Avatar extends StatelessWidget {
                 trimmed.substring(0, 1).toUpperCase(),
                 style: SwType.label.copyWith(color: SwColors.stampDeep),
               ),
+      ),
+    );
+  }
+}
+
+/// The Scan pill inside the wallet field. When the field is under 250 points
+/// wide it keeps only its icon, like the web's container query.
+class _ScanButton extends StatelessWidget {
+  const _ScanButton({
+    required this.employee,
+    required this.compact,
+    required this.onPressed,
+  });
+
+  final int employee;
+  final bool compact;
+  final VoidCallback? onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    const content = SwColors.stamp;
+    return Padding(
+      padding: const EdgeInsets.only(right: 5),
+      child: Semantics(
+        button: true,
+        label: 'Scan a wallet QR code for employee $employee',
+        excludeSemantics: true,
+        child: Tooltip(
+          message: 'Scan a wallet QR code',
+          child: Opacity(
+            opacity: onPressed == null ? 0.5 : 1,
+            child: Material(
+              color: SwColors.stampWash,
+              borderRadius: const BorderRadius.all(Radius.circular(8)),
+              clipBehavior: Clip.antiAlias,
+              child: InkWell(
+                onTap: onPressed,
+                hoverColor: const Color(0xFFE0D8FA),
+                child: SizedBox(
+                  height: 32,
+                  width: compact ? 32 : null,
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(horizontal: compact ? 0 : 10),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(SwIcons.scan, size: 16, color: content),
+                        if (!compact) ...[
+                          const SizedBox(width: 5),
+                          Text(
+                            'Scan',
+                            style: SwType.label.copyWith(
+                              fontSize: 13,
+                              color: content,
+                              height: 1,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }

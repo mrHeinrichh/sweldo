@@ -1,6 +1,9 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <!-- Horizon, Soroban RPC, Friendbot and the WalletConnect relay. -->
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- QR camera access is requested only after the user taps Start camera. -->
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-feature android:name="android.hardware.camera" android:required="false" />
     <application
         android:label="Sweldo"
         android:name="${applicationName}"

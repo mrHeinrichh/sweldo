@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { RefreshCw } from 'lucide-react'
 import { amountString, formatAmount } from '../../state/amount'
 import { IconButton } from '../../ui/Button'
@@ -7,16 +8,19 @@ import { KeyText } from '../../ui/KeyText'
 import { Panel } from '../../ui/Layout'
 import { useTween } from '../../ui/Motion'
 import type { PayoutTotal } from '../../lib/payroll-assets'
+import { WalletAddressQr, WalletQrButton } from '../wallet/WalletAddressQr'
 
 /** Connected wallet, total still to come, and a manual refresh. */
 export function WalletOverview({ address, totals, activeCount, loading, onRefresh }: {
   address: string; totals: PayoutTotal[]; activeCount: number; loading: boolean; onRefresh: () => void
 }) {
   const wide = useWide()
+  const [qrOpen, setQrOpen] = useState(false)
   const wallet = (
     <div className="overview-cell">
       <span className="t-caption">Connected wallet</span>
       <span className="overview-key"><KeyText value={address} edge={8} strong /></span>
+      <WalletQrButton onClick={() => setQrOpen(true)} />
     </div>
   )
   const totalCell = (
@@ -35,6 +39,7 @@ export function WalletOverview({ address, totals, activeCount, loading, onRefres
 
   return (
     <Panel className={`overview ${wide ? 'wide' : ''}`}>
+      <WalletAddressQr address={address} open={qrOpen} onClose={() => setQrOpen(false)} />
       {wide
         ? <>{wallet}{totalCell}{count}{refresh}</>
         : (

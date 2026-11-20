@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { ArrowUpRight, ChevronDown, Copy, LogOut, Wallet } from 'lucide-react'
+import { ArrowUpRight, ChevronDown, Copy, LogOut, QrCode, Wallet } from 'lucide-react'
 import { explorer } from '../../state/config'
 import { useToast } from '../../state/toast'
 import { useWallet } from '../../state/wallet'
@@ -7,6 +7,7 @@ import { WALLET_KINDS } from '../../lib/wallets'
 import { Button } from '../../ui/Button'
 import { shortKey } from '../../ui/format'
 import { useWide } from '../../ui/hooks'
+import { WalletAddressQr } from './WalletAddressQr'
 import './wallet.css'
 
 /** Connect / connected-account control in the top bar. */
@@ -15,6 +16,7 @@ export function WalletButton() {
   const toast = useToast()
   const compact = !useWide()
   const [menuOpen, setMenuOpen] = useState(false)
+  const [qrOpen, setQrOpen] = useState(false)
   const root = useRef<HTMLDivElement>(null)
   const session = wallet.session
 
@@ -62,12 +64,14 @@ export function WalletButton() {
             setMenuOpen(false)
             try { await navigator.clipboard.writeText(session.address); toast('Address copied.') } catch { toast('Copy is unavailable here. Select the text instead.') }
           }}><Copy size={18} /> Copy address</button>
+          <button type="button" role="menuitem" onClick={() => { setMenuOpen(false); setQrOpen(true) }}><QrCode size={18} /> My wallet QR code</button>
           <a role="menuitem" href={explorer.account(session.address)} target="_blank" rel="noreferrer" onClick={() => setMenuOpen(false)}>
             <ArrowUpRight size={18} /> View on Stellar Expert
           </a>
           <button type="button" role="menuitem" onClick={() => { setMenuOpen(false); wallet.disconnect() }}><LogOut size={18} /> Disconnect</button>
         </div>
       )}
+      <WalletAddressQr address={session.address} open={qrOpen} onClose={() => setQrOpen(false)} />
     </div>
   )
 }

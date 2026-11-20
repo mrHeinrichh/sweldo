@@ -356,6 +356,9 @@ class _TeamStep extends StatelessWidget {
                 style: SwType.caption,
               ),
             ),
+            // Import beside Add, as on the web.
+            const RosterImportButton(),
+            const SizedBox(width: SwSpace.xs),
             SwButton(
               label: context.up(Breakpoint.sm) ? 'Add employee' : 'Add',
               icon: SwIcons.add,
@@ -366,11 +369,8 @@ class _TeamStep extends StatelessWidget {
             ),
           ],
         ),
-        const SizedBox(height: SwSpace.sm),
-        const Align(
-          alignment: Alignment.centerRight,
-          child: RosterImportButton(),
-        ),
+        // The web's 8px under the actions plus 12px above the list.
+        const SizedBox(height: SwSpace.sm + SwSpace.md),
         TourTarget(
           id: 'employees',
           child: AnimatedSize(

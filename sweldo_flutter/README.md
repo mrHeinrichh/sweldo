@@ -22,6 +22,8 @@ Web uses the shared Stellar Wallets Kit adapter. Phones use Varial WalletConnect
 | Soroban Payroll Registry proof (`record_schedule`) | ✓ | ✓ |
 | Payroll reconstruction from Horizon, balance IDs, claims and cancellation receipts | ✓ | ✓ |
 | CSV/paste roster with preview and exact amount validation | ✓ | ✓ |
+| Roster CSV template download, spreadsheet-style sample and every-row error list | ✓ | ✓ |
+| Scan an employee's wallet QR into the payroll form; show your own wallet QR | ✓ (camera or QR screenshot) | ✓ (camera; QR screenshot on phones) |
 | xBull plus selected-wallet Testnet signature and envelope checks | ✓ | ✓ (real native approvals still require manual QA) |
 | Cancel future payouts, re-checked on the ledger before signing | ✓ | ✓ |
 | Friendbot funding and one-tap trustline | ✓ | ✓ |

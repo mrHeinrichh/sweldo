@@ -8,6 +8,7 @@ import '../../../../core/widgets/key_text.dart';
 import '../../../../core/widgets/layout.dart';
 import '../../../../core/widgets/sw_button.dart';
 import '../../../../core/theme/sw_icons.dart';
+import '../../../wallet/view/wallet_address_qr.dart';
 import '../../domain/payout.dart';
 
 /// Connected wallet, total still to come, and a manual refresh.
@@ -39,6 +40,8 @@ class WalletOverview extends StatelessWidget {
           edge: 8,
           style: SwType.mono.copyWith(color: SwColors.ink, fontSize: 14),
         ),
+        const SizedBox(height: 6),
+        WalletQrButton(address: address),
       ],
     );
     final total = Column(

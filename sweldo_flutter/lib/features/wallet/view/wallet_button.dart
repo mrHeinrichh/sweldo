@@ -12,9 +12,10 @@ import '../../../core/widgets/layout.dart';
 import '../../../core/widgets/sw_button.dart';
 import '../bloc/wallet_bloc.dart';
 import 'connect_wallet_sheet.dart';
+import 'wallet_address_qr.dart';
 import '../../../core/theme/sw_icons.dart';
 
-enum _WalletAction { copy, explorer, disconnect }
+enum _WalletAction { qr, copy, explorer, disconnect }
 
 /// Connect / connected-account control in the top bar. Morphs between its
 /// two states so the change reads as the same control updating.
@@ -60,6 +61,7 @@ class WalletButton extends StatelessWidget {
               style: SwType.caption,
             ),
           ),
+          _item(_WalletAction.qr, SwIcons.qrCode, 'My wallet QR code'),
           _item(_WalletAction.copy, SwIcons.copy, 'Copy address'),
           _item(
             _WalletAction.explorer,
@@ -147,12 +149,13 @@ class WalletButton extends StatelessWidget {
     String address,
   ) async {
     switch (action) {
+      case _WalletAction.qr:
+        await showWalletAddressQr(context, address);
       case _WalletAction.copy:
         await Clipboard.setData(ClipboardData(text: address));
         if (context.mounted) {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(const SnackBar(content: Text('Address copied.')));
+          ScaffoldMessenger.of(context)
+              .showSnackBar(const SnackBar(content: Text('Address copied.')));
         }
       case _WalletAction.explorer:
         await openExternal(Explorer.account(address));
