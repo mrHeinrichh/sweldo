@@ -15,6 +15,10 @@ export function Sheet({ open, onClose, children, maxWidth = 460, label, dismissi
   const [mounted, setMounted] = useState(open)
   const [leaving, setLeaving] = useState(false)
   const panel = useRef<HTMLDivElement>(null)
+  // Callers pass inline arrows; reading the latest through a ref keeps focus
+  // where the person is typing instead of resetting it on every parent render.
+  const closeRef = useRef(onClose)
+  useEffect(() => { closeRef.current = onClose })
 
   useEffect(() => {
     if (open) {
@@ -30,7 +34,7 @@ export function Sheet({ open, onClose, children, maxWidth = 460, label, dismissi
 
   useEffect(() => {
     if (!open) return
-    const onKey = (event: KeyboardEvent) => { if (event.key === 'Escape' && dismissible) onClose() }
+    const onKey = (event: KeyboardEvent) => { if (event.key === 'Escape' && dismissible) closeRef.current() }
     window.addEventListener('keydown', onKey)
     const previous = document.activeElement as HTMLElement | null
     window.setTimeout(() => panel.current?.focus(), 0)
@@ -38,7 +42,7 @@ export function Sheet({ open, onClose, children, maxWidth = 460, label, dismissi
       window.removeEventListener('keydown', onKey)
       previous?.focus?.()
     }
-  }, [open, onClose, dismissible])
+  }, [open, dismissible])
 
   if (!mounted) return null
   return createPortal(

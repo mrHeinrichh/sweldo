@@ -5,6 +5,7 @@ import { payrollAssets } from './config'
 import { friendlyError } from './errors'
 import { useWallet } from './wallet'
 import { localTestFaucet, requestTestUsdc, type TestFaucet, type TestFundingReceipt } from '../lib/test-faucet'
+import type { TransactionPhase } from '../lib/transaction-progress'
 
 // Port of AccountSetupCubit: the "Get free test XLM" and "Enable USDC"
 // prompts, plus balances for the payroll coverage check.
@@ -20,6 +21,7 @@ type AccountState = {
   faucet: TestFaucet | null
   fundingAsset: boolean
   fundingReceipt: TestFundingReceipt | null
+  transactionPhase?: TransactionPhase
 }
 
 type AccountContextValue = AccountState & {
@@ -113,9 +115,9 @@ export function AccountProvider({ children, assetOverride }: { children: ReactNo
     const target = scope
     if (!target.address || target.asset.isNative() || busy.current) return
     busy.current = true
-    patch(target, { enabling: true, error: null })
+    patch(target, { enabling: true, transactionPhase: 'preparing', error: null })
     try {
-      await addTrustline(target.address, target.asset)
+      await addTrustline(target.address, target.asset, (transactionPhase) => patch(target, { transactionPhase }))
       await check(target)
     } catch (error) {
       patch(target, { error: friendlyError(error) })

@@ -161,13 +161,21 @@ export async function connectMobile(onUri: (uri: string) => void, signal?: Abort
   })
   if (uri) onUri(uri)
   const approved = await new Promise<SessionTypes.Struct>((resolve, reject) => {
-    signal?.addEventListener('abort', () => reject(new DOMException('Pairing cancelled.', 'AbortError')))
-    approval().then(resolve, (error: unknown) => {
+    const abort = () => reject(new DOMException('Pairing cancelled.', 'AbortError'))
+    signal?.addEventListener('abort', abort, { once: true })
+    if (signal?.aborted) abort()
+    approval().then(async (approved) => {
+      if (signal?.aborted) {
+        await instance.disconnect({ topic: approved.topic, reason: getSdkError('USER_DISCONNECTED') }).catch(() => {})
+        return
+      }
+      resolve(approved)
+    }, (error: unknown) => {
       const message = (error as { message?: string })?.message ?? ''
       reject(new Error(/reject/i.test(message)
         ? 'You declined the connection in Varial.'
         : `Varial did not connect: ${message || 'the request expired'}`))
-    })
+    }).finally(() => signal?.removeEventListener('abort', abort))
   })
   session = approved
   return toAccount(approved)

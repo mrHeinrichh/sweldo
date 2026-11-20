@@ -43,7 +43,7 @@ export async function connect(kind: WalletKind, options: { onPairingUri?: (uri: 
 }
 
 /** Reconnects to the wallet used last time, without prompting. */
-export async function restore(): Promise<WalletState | null> {
+export async function restore(signal?: AbortSignal): Promise<WalletState | null> {
   const version = connectionVersion
   let last: string | null = null
   try { last = localStorage.getItem(LAST_WALLET_KEY) } catch { /* ignore */ }
@@ -52,7 +52,7 @@ export async function restore(): Promise<WalletState | null> {
   const account = last === 'freighter-mobile'
     ? await restoreMobile().catch(() => null)
     : await restoreExtension()
-  if (!account || version !== connectionVersion) return null
+  if (!account || signal?.aborted || version !== connectionVersion) return null
   active = last
   return { ...account, kind: last }
 }

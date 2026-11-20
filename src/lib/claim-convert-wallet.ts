@@ -2,6 +2,7 @@ import { currentAccount, signXdr } from './wallets'
 import { Horizon, Networks, TransactionBuilder } from '@stellar/stellar-sdk'
 import { prepareClaimConversion, type ConversionQuote, type ConversionReceipt } from './claim-convert.ts'
 import { requireTestnetAccount } from './wallets/signing'
+import type { TransactionProgress } from './transaction-progress'
 
 export class SubmissionUncertain extends Error {
   transactionHash: string
@@ -11,16 +12,19 @@ export class SubmissionUncertain extends Error {
   }
 }
 
-export async function claimAndConvert(server: Horizon.Server, quote: ConversionQuote): Promise<ConversionReceipt> {
+export async function claimAndConvert(server: Horizon.Server, quote: ConversionQuote, onProgress?: TransactionProgress): Promise<ConversionReceipt> {
+  onProgress?.('preparing')
   const account = await currentAccount()
   requireTestnetAccount(account, quote.address)
   const transaction = await prepareClaimConversion(server, quote)
+  onProgress?.('approval')
   const signed = await signXdr(transaction.toXDR(), quote.address, Networks.TESTNET)
   const signedTransaction = TransactionBuilder.fromXDR(signed, Networks.TESTNET)
   if (signedTransaction.hash().toString('hex') !== transaction.hash().toString('hex')) {
     throw new Error('The signed transaction did not match the reviewed payout. Nothing was submitted.')
   }
   const hash = transaction.hash().toString('hex')
+  onProgress?.('submitting')
   try {
     await server.submitTransaction(signedTransaction)
   } catch (error) {
@@ -29,6 +33,7 @@ export async function claimAndConvert(server: Horizon.Server, quote: ConversionQ
     throw new SubmissionUncertain(hash)
   }
   // A delayed Horizon receipt must not turn a successful submission into a retry.
+  onProgress?.('receipt')
   let receivedAmount: string | null = null
   try {
     const operations = await server.operations().forTransaction(hash).call()

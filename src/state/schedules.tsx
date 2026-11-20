@@ -8,6 +8,7 @@ import { explorer } from './config'
 import { friendlyError } from './errors'
 import { cancellableBalanceIds, onSchedulesChanged, type PayrollSchedule } from './schedules-store'
 import { useWallet, type WalletSession } from './wallet'
+import type { TransactionPhase } from '../lib/transaction-progress'
 
 type SchedulesState = {
   schedules: PayrollSchedule[]
@@ -17,6 +18,7 @@ type SchedulesState = {
   loading: boolean
   checkedAt: string | null
   cancellingId: string | null
+  transactionPhase?: TransactionPhase
   notice: NoticeData | null
 }
 type SchedulesApi = SchedulesState & {
@@ -92,7 +94,7 @@ export function SchedulesProvider({ children }: { children: ReactNode }) {
       setState((previous) => ({ ...previous, notice: { tone: 'error', text: 'Connect the employer wallet on Testnet to cancel its future payouts.' } }))
       return
     }
-    setState((previous) => ({ ...previous, cancellingId: schedule.id, notice: null }))
+    setState((previous) => ({ ...previous, cancellingId: schedule.id, transactionPhase: 'preparing', notice: null }))
     try {
       const activeWallet = await currentAccount()
       if (activeWallet.address !== wallet.address || activeWallet.network !== 'TESTNET'
@@ -106,7 +108,7 @@ export function SchedulesProvider({ children }: { children: ReactNode }) {
       const active = new Set(current.payouts?.filter((payout) => payout.active).map((payout) => payout.balanceId))
       const ids = cancellableBalanceIds(current, active, new Date())
       if (!ids.length) throw new Error('No future payouts remain. Payouts at or past payday cannot be cancelled.')
-      const response = await cancelBalances(wallet.address, ids)
+      const response = await cancelBalances(wallet.address, ids, (transactionPhase) => setState((previous) => ({ ...previous, transactionPhase })))
       if (targetRef.current === wallet.address) {
         await load(wallet.address)
         setState((previous) => ({ ...previous, notice: {

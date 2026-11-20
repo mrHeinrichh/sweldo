@@ -20,6 +20,7 @@ import { PayoutRow } from './PayoutRow'
 import { WalletOverview } from './WalletOverview'
 import '../payroll/payroll.css'
 import './payouts.css'
+import { ActivityProgress, TransactionActivity } from '../../ui/ActivityProgress'
 
 export function EmployeePage() {
   const { session } = useWallet()
@@ -71,6 +72,7 @@ function PayView({ address }: { address: string }) {
       <WalletOverview address={address} totals={payoutTotals(open)} activeCount={open.length} loading={payouts.loading} onRefresh={payouts.refresh} />
       <div style={{ height: 'var(--s-lg)' }} />
       <AnimatedNotice data={payouts.notice} />
+      {payouts.claimingId && <TransactionActivity phase={payouts.transactionPhase ?? 'preparing'} title="Claiming your payout" />}
       <Collapse open={payouts.receipt !== null}>
         {payouts.receipt && <div style={{ paddingBottom: 'var(--s-lg)' }}><ConversionReceiptCard receipt={payouts.receipt} /></div>}
       </Collapse>
@@ -137,6 +139,7 @@ function Timeline({ address, onConvert }: { address: string; onConvert: (payout:
 function LedgerLoading() {
   return (
     <div aria-label="Reading the Stellar ledger">
+      <ActivityProgress title="Finding your pay" steps={['Wallet connected', 'Read payouts and history']} current={1} detail="Your wallet is connected. Reading your scheduled payouts and confirmed claims from Stellar…" />
       <PayrollPaper>
         {[0, 1, 2].map((i) => (
           <div key={i} className="ledger-loading-row">

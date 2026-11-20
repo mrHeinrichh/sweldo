@@ -1,0 +1,63 @@
+/* Wallet QR: scanning an employee's address and showing your own. */
+.wallet-qr-content { display: flex; flex-direction: column; gap: var(--s-lg); }
+.wallet-qr-heading { display: flex; align-items: center; justify-content: space-between; gap: var(--s-md); }
+.wallet-qr-actions { display: flex; flex-wrap: wrap; gap: var(--s-sm); }
+.wallet-qr-actions > .sw-button { flex: 1 1 190px; }
+.wallet-qr-address {
+  margin: 0; padding: var(--s-md); border: 1px solid var(--rule); border-radius: var(--r-field); background: var(--paper);
+  color: var(--ink-muted); font: 400 14px/1.6 var(--mono); word-break: break-all; user-select: all;
+}
+.wallet-qr-groups { display: flex; flex-wrap: wrap; column-gap: .55ch; }
+.wallet-qr-groups .edge { color: var(--ink); font-weight: 500; }
+
+/* Viewfinder: corner brackets in stamp ink, white once the camera is live. */
+.wallet-scan-frame {
+  position: relative; width: 100%; height: min(42vh, 280px); min-height: 180px; overflow: hidden;
+  border-radius: var(--r-panel); border: 1px solid var(--rule); background: var(--paper);
+  transition: background-color var(--standard) var(--ease-out);
+}
+.wallet-scan-frame video { width: 100%; height: 100%; object-fit: cover; visibility: hidden; }
+.wallet-scan-frame.is-live { background: var(--ink); border-color: var(--ink); }
+.wallet-scan-frame.is-live video { visibility: visible; }
+.wallet-scan-placeholder {
+  position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--s-md);
+  color: var(--stamp); font: 600 13px/1.3 var(--font);
+}
+.wallet-scan-placeholder span { color: var(--ink-muted); }
+.wallet-scan-corners { position: absolute; top: 50%; left: 50%; height: 74%; aspect-ratio: 1; transform: translate(-50%, -50%); pointer-events: none; }
+.wallet-scan-corners i { position: absolute; width: 26px; height: 26px; border: 3px solid var(--stamp); transition: border-color var(--standard) var(--ease-out); }
+.wallet-scan-corners i:nth-child(1) { top: 0; left: 0; border-right: 0; border-bottom: 0; border-top-left-radius: 12px; }
+.wallet-scan-corners i:nth-child(2) { top: 0; right: 0; border-left: 0; border-bottom: 0; border-top-right-radius: 12px; }
+.wallet-scan-corners i:nth-child(3) { bottom: 0; left: 0; border-right: 0; border-top: 0; border-bottom-left-radius: 12px; }
+.wallet-scan-corners i:nth-child(4) { bottom: 0; right: 0; border-left: 0; border-top: 0; border-bottom-right-radius: 12px; }
+.is-live .wallet-scan-corners i { border-color: #fff; }
+.wallet-scan-line {
+  position: absolute; left: 50%; top: 16%; width: min(66%, 62vw); height: 2px; transform: translateX(-50%); border-radius: 1px;
+  background: linear-gradient(90deg, transparent, var(--violet-light) 20%, #fff 50%, var(--violet-light) 80%, transparent);
+  box-shadow: 0 0 14px 2px rgba(128, 105, 238, .55);
+  animation: wallet-scan-sweep 1.9s var(--ease-move) infinite alternate;
+}
+@keyframes wallet-scan-sweep { to { top: 84%; } }
+@media (prefers-reduced-motion: reduce) { .wallet-scan-line { animation: none; top: 50%; } }
+
+.wallet-qr-error {
+  margin: 0; padding: var(--s-md); border-radius: var(--r-field); background: var(--danger-wash); color: var(--danger);
+  animation: wallet-qr-error-in 220ms var(--ease-enter) both;
+}
+.wallet-qr-found { display: flex; flex-direction: column; gap: var(--s-lg); animation: wallet-qr-found-in 320ms var(--ease-enter) both; }
+.wallet-qr-found strong { color: var(--ink); font: 500 14px/1 var(--mono); }
+.wallet-qr-found-title { display: flex; align-items: center; gap: var(--s-sm); color: var(--payday); font: 700 16px/1.3 var(--font); }
+.wallet-qr-found-title svg { padding: 3px; border-radius: 50%; background: var(--payday-wash); box-sizing: content-box; }
+@keyframes wallet-qr-found-in { from { opacity: 0; transform: translateY(8px); } }
+@keyframes wallet-qr-error-in { from { opacity: 0; transform: translateY(-4px); } }
+.wallet-qr-privacy { display: flex; align-items: flex-start; gap: 6px; }
+.wallet-qr-privacy svg { flex: none; margin-top: 1px; color: var(--payday); }
+
+/* My wallet QR: the code sits on a white card like a printed slip. */
+.wallet-address-card { display: grid; place-items: center; padding: var(--s-lg); border: 1px solid var(--rule); border-radius: var(--r-panel); background: #fff; }
+.wallet-address-qr { display: block; width: min(100%, 248px); height: auto; aspect-ratio: 1; }
+.wallet-address-pending { display: grid; place-items: center; width: min(100%, 248px); aspect-ratio: 1; color: var(--ink-faint); }
+.wallet-qr-open { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 32px; padding: 0 10px; border: 1px solid var(--rule); border-radius: 8px; background: #fff; color: var(--stamp); cursor: pointer; font: 600 13px/1 var(--font); transition: background-color var(--quick) ease-out; }
+.wallet-qr-open:hover { background: var(--stamp-wash); }
+.wallet-qr-open:focus-visible { outline: 2px solid var(--stamp); outline-offset: 2px; }
+.overview-cell .wallet-qr-open { margin-top: 6px; }

@@ -16,6 +16,8 @@ import '../../features/wallet/view/wallet_button.dart';
 import '../../features/tour/tour_controller.dart';
 import '../../features/tour/tour_overlay.dart';
 import '../router/app_router.dart';
+import 'first_use_flow.dart';
+import 'wallet_activity_banner.dart';
 import '../../core/theme/sw_icons.dart';
 
 /// Frame shared by every destination: top bar, network warning, navigation.
@@ -49,6 +51,7 @@ class AppShell extends StatelessWidget {
                 children: [
                   _TopBar(current: current, wide: wide),
                   const _WrongNetworkBanner(),
+                  const WalletActivityBanner(),
                   Expanded(child: child),
                 ],
               ),
@@ -56,6 +59,7 @@ class AppShell extends StatelessWidget {
             bottomNavigationBar: wide ? null : _BottomNav(current: current),
           ),
           Positioned.fill(child: TourOverlay(currentPath: location)),
+          const FirstUseFlow(),
         ],
       ),
     );
@@ -101,7 +105,10 @@ class _TopBar extends StatelessWidget {
           height: 67,
           child: Row(
             children: [
-              SweldoLogo(onTap: () => context.go(AppRoute.overview.path)),
+              SweldoLogo(
+                compact: !context.up(Breakpoint.sm),
+                onTap: () => context.go(AppRoute.overview.path),
+              ),
               if (wide) ...[
                 const SizedBox(width: SwSpace.xxl),
                 _TopNav(current: current),

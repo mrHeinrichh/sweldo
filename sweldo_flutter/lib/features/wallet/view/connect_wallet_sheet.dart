@@ -10,6 +10,7 @@ import '../../../core/theme/typography.dart';
 import '../../../core/widgets/external_link.dart';
 import '../../../core/widgets/layout.dart';
 import '../../../core/widgets/sw_button.dart';
+import '../../../core/widgets/operation_progress.dart';
 import '../bloc/wallet_bloc.dart';
 import '../data/walletconnect/freighter_links.dart';
 import '../data/wallet_connector.dart';
@@ -22,9 +23,16 @@ import '../../../core/theme/sw_icons.dart';
 Future<void> showConnectWalletSheet(BuildContext context) async {
   final bloc = context.read<WalletBloc>();
   final repository = context.read<WalletRepository>();
-  final content = BlocProvider.value(
-    value: bloc,
-    child: _ConnectWalletContent(connectors: repository.connectors),
+  final content = ConstrainedBox(
+    constraints: BoxConstraints(
+      maxHeight: MediaQuery.sizeOf(context).height * 0.82,
+    ),
+    child: SingleChildScrollView(
+      child: BlocProvider.value(
+        value: bloc,
+        child: _ConnectWalletContent(connectors: repository.connectors),
+      ),
+    ),
   );
   if (isWide(context)) {
     await showDialog<void>(
@@ -62,10 +70,43 @@ Future<void> showConnectWalletSheet(BuildContext context) async {
   }
 }
 
-class _ConnectWalletContent extends StatelessWidget {
+class _ConnectWalletContent extends StatefulWidget {
   const _ConnectWalletContent({required this.connectors});
 
   final List<WalletConnector> connectors;
+
+  @override
+  State<_ConnectWalletContent> createState() => _ConnectWalletContentState();
+}
+
+class _ConnectWalletContentState extends State<_ConnectWalletContent>
+    with WidgetsBindingObserver {
+  bool _away = false;
+  bool _returned = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.hidden) {
+      _away = true;
+    }
+    if (state == AppLifecycleState.resumed && _away) {
+      _away = false;
+      if (mounted) setState(() => _returned = true);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -91,13 +132,40 @@ class _ConnectWalletContent extends StatelessWidget {
                 child: child,
               ),
             ),
-            child: pairing == null
-                ? _WalletChoices(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                if (pairing == null)
+                  _WalletChoices(
                     key: const ValueKey('choices'),
-                    connectors: connectors,
+                    connectors: widget.connectors,
                     state: state,
                   )
-                : _PairingView(key: ValueKey(pairing), uri: pairing),
+                else
+                  _PairingView(key: ValueKey(pairing), uri: pairing),
+                if (state.status == WalletStatus.connecting) ...[
+                  const SizedBox(height: SwSpace.lg),
+                  OperationProgress(
+                    title: _returned
+                        ? 'Receiving wallet approval'
+                        : 'Connecting your wallet',
+                    message: _returned
+                        ? 'You’re back. Checking for your wallet’s approval. The connection is complete only when your wallet responds.'
+                        : pairing == null
+                        ? 'Opening the wallet connection request. Review it in your wallet.'
+                        : 'Connection link ready. Approve in Varial, then return to Sweldo.',
+                    steps: const [
+                      'Request sent',
+                      'Wallet approval',
+                      'Connected',
+                    ],
+                    currentStep: pairing == null ? 0 : 1,
+                    slowMessage: 'Still waiting for approval. Open your wallet to check the request, or cancel and try connecting again.',
+                  ),
+                ],
+              ],
+            ),
           ),
         );
       },
@@ -117,14 +185,27 @@ class _WalletChoices extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final ordered = FreighterLinks.onPhone
-        ? connectors
-              .where((c) => c.kind != WalletKind.freighterExtension)
-              .toList()
-        : ([...connectors]..sort((a, b) {
-            int rank(WalletConnector c) => c.isAvailable ? 0 : 1;
+    final ordered =
+        connectors
+            .where(
+              (c) =>
+                  !FreighterLinks.onPhone ||
+                  c.kind != WalletKind.freighterExtension,
+            )
+            .toList()
+          ..sort((a, b) {
+            int rank(WalletConnector c) => switch (c.kind) {
+              WalletKind.freighterExtension => 0,
+              WalletKind.freighterMobile => 1,
+              WalletKind.xbull => 2,
+            };
             return rank(a).compareTo(rank(b));
-          }));
+          });
+    final recommended =
+        ordered
+            .where((c) => c.kind != WalletKind.xbull && c.isAvailable)
+            .firstOrNull ??
+        ordered.where((c) => c.kind != WalletKind.xbull).firstOrNull;
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -140,6 +221,7 @@ class _WalletChoices extends StatelessWidget {
         for (final connector in ordered) ...[
           _WalletOption(
             connector: connector,
+            recommended: identical(connector, recommended),
             busy: state.connectingKind == connector.kind,
             enabled:
                 connector.isAvailable &&
@@ -226,11 +308,13 @@ class _FreighterInstalledState extends State<_FreighterInstalled>
 class _WalletOption extends StatelessWidget {
   const _WalletOption({
     required this.connector,
+    required this.recommended,
     required this.busy,
     required this.enabled,
   });
 
   final WalletConnector connector;
+  final bool recommended;
   final bool busy;
   final bool enabled;
 
@@ -257,7 +341,9 @@ class _WalletOption extends StatelessWidget {
           color: state.hovered ? SwColors.stampWash : Colors.white,
           borderRadius: const BorderRadius.all(SwRadius.panel),
           border: Border.all(
-            color: busy || state.hovered ? SwColors.stamp : SwColors.rule,
+            color: busy || state.hovered || recommended
+                ? SwColors.stamp
+                : SwColors.rule,
           ),
         ),
         child: Opacity(
@@ -283,7 +369,10 @@ class _WalletOption extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(kind.title, style: SwType.subtitle),
+                    Text(
+                      '${kind.title}${recommended ? ' · Recommended' : ''}',
+                      style: SwType.subtitle,
+                    ),
                     const SizedBox(height: 2),
                     Text(
                       connector.unavailableReason ?? kind.description,
@@ -376,17 +465,6 @@ class _PairingView extends StatelessWidget {
           ),
         ],
         const SizedBox(height: SwSpace.lg),
-        const Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            SizedBox.square(
-              dimension: 14,
-              child: CircularProgressIndicator(strokeWidth: 2),
-            ),
-            SizedBox(width: SwSpace.sm),
-            Text('Waiting for approval', style: SwType.caption),
-          ],
-        ),
         const SizedBox(height: SwSpace.xl),
         Wrap(
           spacing: SwSpace.sm,

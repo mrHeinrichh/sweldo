@@ -12,6 +12,7 @@ import {
   xdr,
 } from '@stellar/stellar-sdk'
 import { signXdr } from './wallets'
+import type { TransactionProgress } from './transaction-progress'
 
 export type { WalletState } from './wallets'
 
@@ -81,9 +82,13 @@ export async function getXlmBalance(address: string) {
   return account.balances.find((balance) => balance.asset_type === 'native')?.balance ?? '0'
 }
 
-async function signAndSubmit(transaction: ReturnType<TransactionBuilder['build']>, address: string) {
+async function signAndSubmit(transaction: ReturnType<TransactionBuilder['build']>, address: string, onProgress?: TransactionProgress) {
+  onProgress?.('approval')
   const signed = await signXdr(transaction.toXDR(), address, NETWORK_PASSPHRASE)
-  return server.submitTransaction(TransactionBuilder.fromXDR(signed, NETWORK_PASSPHRASE))
+  onProgress?.('submitting')
+  const result = await server.submitTransaction(TransactionBuilder.fromXDR(signed, NETWORK_PASSPHRASE))
+  onProgress?.('receipt')
+  return result
 }
 
 function wait(milliseconds: number) {
@@ -219,7 +224,9 @@ export async function createBatchSchedule(input: {
   firstUnlock: Date
   intervalSeconds: number
   asset: Asset
+  onProgress?: TransactionProgress
 }) {
+  input.onProgress?.('preparing')
   const operationCount = input.recipients.length * input.payouts
   if (operationCount < 1) throw new Error('Add at least one employee before locking payroll.')
   if (operationCount > 100) throw new Error('A Stellar transaction can include up to 100 payroll payouts. Reduce employees or payouts.')
@@ -252,14 +259,15 @@ export async function createBatchSchedule(input: {
   }
 
   const transaction = builder.setTimeout(180).build()
-  const result = await signAndSubmit(transaction, input.employer)
+  const result = await signAndSubmit(transaction, input.employer, input.onProgress)
   return {
     ...result,
     balanceIds: createdBalanceIds(result.result_xdr),
   }
 }
 
-export async function claimBalance(address: string, balanceId: string) {
+export async function claimBalance(address: string, balanceId: string, onProgress?: TransactionProgress) {
+  onProgress?.('preparing')
   const account = await loadAccount(address)
   const transaction = new TransactionBuilder(account, {
     fee: '100',
@@ -268,10 +276,11 @@ export async function claimBalance(address: string, balanceId: string) {
     .addOperation(Operation.claimClaimableBalance({ balanceId }))
     .setTimeout(180)
     .build()
-  return signAndSubmit(transaction, address)
+  return signAndSubmit(transaction, address, onProgress)
 }
 
-export async function cancelBalances(address: string, balanceIds: string[]) {
+export async function cancelBalances(address: string, balanceIds: string[], onProgress?: TransactionProgress) {
+  onProgress?.('preparing')
   if (balanceIds.length < 1) throw new Error('There are no future payouts available to cancel.')
   if (balanceIds.length > 100) throw new Error('A Stellar transaction can cancel up to 100 payouts at once.')
   const account = await loadAccount(address)
@@ -282,10 +291,11 @@ export async function cancelBalances(address: string, balanceIds: string[]) {
   for (const balanceId of balanceIds) {
     builder = builder.addOperation(Operation.claimClaimableBalance({ balanceId }))
   }
-  return signAndSubmit(builder.setTimeout(180).build(), address)
+  return signAndSubmit(builder.setTimeout(180).build(), address, onProgress)
 }
 
-export async function addTrustline(address: string, asset: Asset) {
+export async function addTrustline(address: string, asset: Asset, onProgress?: TransactionProgress) {
+  onProgress?.('preparing')
   if (asset.isNative()) throw new Error('XLM does not need a trustline.')
   const account = await loadAccount(address)
   const transaction = new TransactionBuilder(account, {
@@ -295,7 +305,7 @@ export async function addTrustline(address: string, asset: Asset) {
     .addOperation(Operation.changeTrust({ asset }))
     .setTimeout(180)
     .build()
-  return signAndSubmit(transaction, address)
+  return signAndSubmit(transaction, address, onProgress)
 }
 
 export async function isAccountFunded(address: string) {

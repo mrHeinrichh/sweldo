@@ -26,8 +26,13 @@ abstract final class Explorer {
   static const home = _base;
 
   static Uri transaction(String hash) => Uri.parse('$_base/tx/$hash');
-  static Uri claimableBalance(String id) =>
-      Uri.parse('$_base/claimable-balance/$id');
+  static Uri claimableBalance(String id) {
+    // Horizon returns a 36-byte XDR ID. Stellar Expert expects the B… StrKey.
+    final explorerId = StrKey.isValidClaimableBalanceId(id)
+        ? id
+        : StrKey.encodeClaimableBalanceIdHex(id);
+    return Uri.parse('$_base/claimable-balance/$explorerId');
+  }
   static Uri contract(String id) => Uri.parse('$_base/contract/$id');
   static Uri account(String id) => Uri.parse('$_base/account/$id');
 }

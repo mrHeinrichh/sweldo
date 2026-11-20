@@ -2,6 +2,7 @@ import 'package:stellar_flutter_sdk/stellar_flutter_sdk.dart';
 
 import '../../../core/error/app_exception.dart';
 import '../../../core/stellar/horizon_client.dart';
+import '../../../core/stellar/transaction_activity.dart';
 import '../../../core/utils/amount.dart';
 import '../../../core/utils/parallel.dart';
 import '../../payouts/domain/payout.dart';
@@ -67,9 +68,9 @@ class ConversionRepository {
             )
             .toList()
           ..sort(
-            (a, b) => Amount.units(
-              b.destinationAmount,
-            ).compareTo(Amount.units(a.destinationAmount)),
+            (a, b) =>
+                Amount.units(b.destinationAmount)
+                    .compareTo(Amount.units(a.destinationAmount)),
           );
     final best = choices.firstOrNull;
     if (best == null) {
@@ -115,10 +116,23 @@ class ConversionRepository {
   }
 
   Future<ConversionReceipt> claimAndConvert(ConversionQuote quote) async {
+    final token = beginTransactionActivity();
+    try {
+      return await _claimAndConvert(quote, token);
+    } finally {
+      endTransactionActivity(token);
+    }
+  }
+
+  Future<ConversionReceipt> _claimAndConvert(
+    ConversionQuote quote,
+    DateTime token,
+  ) async {
     await _wallet.ensureActiveAccount(quote.address);
     final transaction = await prepare(quote);
     final hash = transactionHashHex(transaction);
 
+    updateTransactionActivity(token, TransactionStage.approval);
     final signed = await _wallet.signTransaction(
       transaction.toEnvelopeXdrBase64(),
       address: quote.address,
@@ -131,6 +145,7 @@ class ConversionRepository {
       );
     }
 
+    updateTransactionActivity(token, TransactionStage.submitting);
     try {
       await _horizon.submit(signed);
     } on StellarRejectedException {
@@ -139,6 +154,7 @@ class ConversionRepository {
       throw SubmissionUncertainException(hash);
     }
 
+    updateTransactionActivity(token, TransactionStage.confirming);
     // A delayed Horizon receipt must not turn a successful submission into a
     // retry: the hash stays the authoritative receipt.
     String? received;

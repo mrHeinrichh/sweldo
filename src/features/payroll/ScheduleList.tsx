@@ -13,6 +13,7 @@ import { useNow } from '../../ui/hooks'
 import { KeyText } from '../../ui/KeyText'
 import { Panel } from '../../ui/Layout'
 import { AnimatedNotice, Collapse } from '../../ui/Notice'
+import { ActivityProgress, TransactionActivity } from '../../ui/ActivityProgress'
 
 /** Payroll obligations reconstructed from public Stellar Testnet history. */
 export function ScheduleList() {
@@ -49,9 +50,11 @@ export function ScheduleList() {
       </form>
       {schedules.checkedAt && <p className="t-caption ledger-checked">Checked {formatDateTime(new Date(schedules.checkedAt))}</p>}
       <AnimatedNotice data={schedules.notice} gap="top" />
+      {schedules.cancellingId && <TransactionActivity phase={schedules.transactionPhase ?? 'preparing'} title="Returning future payouts" />}
+      {schedules.loading && <ActivityProgress title="Reading payroll history" steps={['Read transactions', 'Verify individual payouts']} current={0} detail="Reading employer transactions and checking each payout on the Stellar ledger…" />}
       <Collapse open={expanded}>
         <div className="schedule-tiles">
-          {!count && <p role="status" className="t-body-sm">{schedules.loading ? 'Reading payroll history...' : schedules.balancesLoaded ? 'No supported payroll schedules found for this employer.' : 'Enter an employer public key to view payroll.'}</p>}
+          {!count && !schedules.loading && <p role="status" className="t-body-sm">{schedules.balancesLoaded ? 'No supported payroll schedules found for this employer.' : 'Enter an employer public key to view payroll.'}</p>}
           {schedules.schedules.map((schedule, index) => (
             <div key={schedule.id}>
               {index > 0 && <hr className="schedule-divider" />}

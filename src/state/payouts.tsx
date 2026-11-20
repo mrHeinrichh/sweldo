@@ -6,6 +6,7 @@ import { formatAmount } from './amount'
 import { explorer } from './config'
 import { friendlyError } from './errors'
 import { useWallet } from './wallet'
+import type { TransactionPhase } from '../lib/transaction-progress'
 
 // Port of PayoutsBloc: the employee's vesting timeline and claims.
 
@@ -80,6 +81,7 @@ type PayoutsState = {
   payouts: Payout[]
   history: ClaimRecord[]
   claimingId: string | null
+  transactionPhase?: TransactionPhase
   /** Payouts claimed this session → transaction hash. They stay stamped until Horizon stops listing them. */
   claimedHashes: Record<string, string>
   freshClaimKey: string | null
@@ -158,14 +160,17 @@ export function PayoutsProvider({ children }: { children: ReactNode }) {
   const claim = useCallback(async (payout: Payout) => {
     const target = addressRef.current
     if (!target || stateRef.current.claimingId) return
-    setState((previous) => ({ ...previous, claimingId: payout.balanceId, notice: null }))
+    setState((previous) => ({ ...previous, claimingId: payout.balanceId, transactionPhase: 'preparing', notice: null }))
     try {
-      const response = await claimBalance(target, payout.balanceId)
+      const response = await claimBalance(target, payout.balanceId, (transactionPhase) => {
+        if (addressRef.current === target) setState((previous) => ({ ...previous, transactionPhase }))
+      })
       const record: ClaimRecord = {
         id: payout.balanceId, balanceId: payout.balanceId, transactionHash: response.hash,
         claimedAt: new Date().toISOString(), amount: payout.amount, asset: payout.assetCode, source: 'local',
       }
       saveHistory(target, record)
+      if (addressRef.current !== target) return
       setState((previous) => ({
         ...previous,
         claimingId: null,
@@ -175,6 +180,7 @@ export function PayoutsProvider({ children }: { children: ReactNode }) {
         notice: { tone: 'success', text: `${formatAmount(payout.amount)} ${payout.assetCode} claimed. It is in your wallet now.`, link: explorer.transaction(response.hash) },
       }))
     } catch (error) {
+      if (addressRef.current !== target) return
       setState((previous) => ({ ...previous, claimingId: null, notice: { tone: 'error', text: friendlyError(error) } }))
     }
   }, [])

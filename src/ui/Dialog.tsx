@@ -6,7 +6,20 @@ import { ChevronLeft, ChevronRight } from 'lucide-react'
 export function Dialog({ onClose, children, label, className = '' }: { onClose: () => void; children: ReactNode; label: string; className?: string }) {
   const surface = useRef<HTMLDivElement>(null)
   useEffect(() => {
-    const onKey = (event: KeyboardEvent) => { if (event.key === 'Escape') onClose() }
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onClose()
+      if (event.key !== 'Tab' || !surface.current) return
+      const controls = Array.from(surface.current.querySelectorAll<HTMLElement>('button:not(:disabled), a[href], input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex="-1"])'))
+        .filter((element) => element.getClientRects().length > 0)
+      const first = controls[0]
+      const last = controls.at(-1)
+      if (!first) { event.preventDefault(); surface.current.focus(); return }
+      if (event.shiftKey && (document.activeElement === first || document.activeElement === surface.current)) {
+        event.preventDefault(); last?.focus()
+      } else if (!event.shiftKey && (document.activeElement === last || !surface.current.contains(document.activeElement))) {
+        event.preventDefault(); first.focus()
+      }
+    }
     window.addEventListener('keydown', onKey)
     const previous = document.activeElement as HTMLElement | null
     surface.current?.focus()

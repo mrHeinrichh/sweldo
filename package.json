@@ -28,7 +28,7 @@
     "flutter:configure": "node scripts/configure-flutter-testnet.mjs",
     "contract:build": "PATH=/opt/homebrew/opt/rustup/bin:$PATH stellar contract build",
     "contract:test": "PATH=/opt/homebrew/opt/rustup/bin:$PATH cargo test -p sweldo_payroll_registry",
-    "test": "npm run week2:test && npm run week3:test && npm run week4:test"
+    "test": "npm run week2:test && npm run week3:test && npm run week4:test && node --experimental-strip-types --test scripts/explorer.test.mjs scripts/transaction-progress.test.mjs scripts/wallet-pending.test.mjs scripts/roster-template.test.mjs scripts/wallet-qr.test.mjs"
   },
   "dependencies": {
     "@creit.tech/stellar-wallets-kit": "2.8.0",
@@ -37,6 +37,7 @@
     "@walletconnect/sign-client": "^2.26.0",
     "@walletconnect/types": "^2.26.0",
     "@walletconnect/utils": "^2.26.0",
+    "jsqr": "1.4.0",
     "lucide-react": "^1.73.0",
     "papaparse": "^5.7.1",
     "qrcode": "^1.5.4",

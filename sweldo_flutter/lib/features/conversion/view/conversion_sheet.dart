@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../core/stellar/stellar_network.dart';
+import '../../../core/stellar/transaction_activity.dart';
 import '../../../core/theme/motion.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../core/theme/typography.dart';
@@ -10,6 +11,7 @@ import '../../../core/widgets/external_link.dart';
 import '../../../core/widgets/key_text.dart';
 import '../../../core/widgets/layout.dart';
 import '../../../core/widgets/notice.dart';
+import '../../../core/widgets/operation_progress.dart';
 import '../../../core/widgets/sw_button.dart';
 import '../../payouts/domain/payout.dart';
 import '../bloc/conversion_bloc.dart';
@@ -121,6 +123,16 @@ class _ConversionContent extends StatelessWidget {
                       ? const SizedBox(width: double.infinity)
                       : _QuoteDetails(quote: quote, now: now),
                 ),
+                if (state.signing)
+                  ValueListenableBuilder<TransactionActivity?>(
+                    valueListenable: transactionActivity,
+                    builder: (context, activity, _) => activity == null
+                        ? const SizedBox.shrink()
+                        : Padding(
+                            padding: const EdgeInsets.only(top: SwSpace.lg),
+                            child: TransactionActivityView(activity: activity),
+                          ),
+                  ),
                 AnimatedNotice(
                   state.error == null ? null : NoticeData.error(state.error!),
                   padding: const EdgeInsets.only(top: SwSpace.lg),

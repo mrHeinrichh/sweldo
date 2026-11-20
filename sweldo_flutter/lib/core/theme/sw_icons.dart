@@ -65,6 +65,15 @@ abstract final class SwIcons {
   static const IconData forward = LucideIcons.arrowRight;
   static const IconData pointer = LucideIcons.pointer;
 
+  // Wallet QR codes and roster files
+  static const IconData scan = LucideIcons.scanLine;
+  static const IconData qrCode = LucideIcons.qrCode;
+  static const IconData camera = LucideIcons.camera;
+  static const IconData uploadImage = LucideIcons.imageUp;
+  static const IconData download = LucideIcons.download;
+  static const IconData upload = LucideIcons.upload;
+  static const IconData fillIn = LucideIcons.filePenLine;
+
   // Wallets and devices
   static const IconData extension = LucideIcons.puzzle;
   static const IconData phone = LucideIcons.smartphone;

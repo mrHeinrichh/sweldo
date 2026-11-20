@@ -1,6 +1,7 @@
 import 'package:stellar_flutter_sdk/stellar_flutter_sdk.dart';
 
 import 'horizon_client.dart';
+import 'transaction_activity.dart';
 
 /// Anything that can put a user's signature on a transaction envelope.
 ///
@@ -22,11 +23,20 @@ class TransactionSubmitter {
     Transaction transaction, {
     required String address,
   }) async {
-    final signed = await _signer.signTransaction(
-      transaction.toEnvelopeXdrBase64(),
-      address: address,
-    );
-    return _horizon.submit(signed);
+    final token = beginTransactionActivity();
+    try {
+      updateTransactionActivity(token, TransactionStage.approval);
+      final signed = await _signer.signTransaction(
+        transaction.toEnvelopeXdrBase64(),
+        address: address,
+      );
+      updateTransactionActivity(token, TransactionStage.submitting);
+      final response = await _horizon.submit(signed);
+      updateTransactionActivity(token, TransactionStage.confirming);
+      return response;
+    } finally {
+      endTransactionActivity(token);
+    }
   }
 
   Future<String> sign(Transaction transaction, {required String address}) =>

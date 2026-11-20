@@ -7,6 +7,7 @@ import { useWallet } from '../../state/wallet'
 import { Button } from '../../ui/Button'
 import { ExternalLink } from '../../ui/ExternalLink'
 import { Sheet } from '../../ui/Sheet'
+import { ActivityProgress } from '../../ui/ActivityProgress'
 import './wallet.css'
 
 /** The wallet picker. Closes itself once a wallet connects. */
@@ -26,9 +27,8 @@ export function ConnectWalletSheet() {
 function WalletChoices() {
   const wallet = useWallet()
   const kinds: WalletKind[] = isMobileBrowser()
-    ? ['xbull', 'freighter-mobile']
-    : (['freighter-extension', 'xbull', 'freighter-mobile'] as WalletKind[])
-      .sort((a, b) => Number(unavailableReason(a) !== null) - Number(unavailableReason(b) !== null))
+    ? ['freighter-mobile', 'xbull']
+    : ['freighter-extension', 'freighter-mobile', 'xbull']
   return (
     <div className="connect-view">
       <h2 className="t-title m0">Connect wallet</h2>
@@ -48,7 +48,7 @@ function WalletChoices() {
             >
               <span className="connect-option-icon">{kind === 'freighter-extension' ? <Puzzle size={20} /> : kind === 'xbull' ? <Globe size={20} /> : <Smartphone size={20} />}</span>
               <span className="connect-option-text">
-                <span className="t-subtitle">{WALLET_KINDS[kind].title}</span>
+                <span className="t-subtitle">{WALLET_KINDS[kind].title}{kind === kinds[0] && <span className="wallet-recommended">Recommended</span>}</span>
                 <span className="t-body-sm">{reason ?? WALLET_KINDS[kind].description}</span>
               </span>
               {busy
@@ -58,6 +58,7 @@ function WalletChoices() {
           )
         })}
       </div>
+      {(wallet.status === 'connecting' || wallet.status === 'restoring') && <ActivityProgress title={wallet.status === 'restoring' ? 'Restoring your wallet connection' : 'Connecting your wallet'} steps={['Start connection', 'Wallet approval', 'Connected']} current={wallet.status === 'restoring' ? 0 : 1} detail={wallet.status === 'restoring' ? 'Checking your saved wallet session. You can choose a wallet below if it has expired.' : 'Your wallet is opening. Approve the connection request, then return to Sweldo.'} approval={wallet.status === 'connecting'} />}
       {wallet.status === 'connecting' && <Button label="Cancel connection" icon={<X />} tone="secondary" onClick={wallet.dismissPairing} />}
       <p className="t-body-sm m0 connect-get">
         <ExternalLink href={freighterStoreUrl()} label={`Get Varial on ${freighterStoreName()}`} className="connect-get-link" />
@@ -93,7 +94,7 @@ function PairingView({ uri }: { uri: string }) {
       </p>
       {/* On a phone the link opens Varial directly; the code is for scanning from another device. */}
       {!onPhone && <div className="connect-qr" role="img" aria-label="WalletConnect pairing code" dangerouslySetInnerHTML={{ __html: svg }} />}
-      <p className="connect-waiting t-caption m0"><LoaderCircle size={14} className="spin" /> Waiting for approval</p>
+      <ActivityProgress title="Connecting to Varial" steps={['Connection link ready', 'Approve in Varial', 'Connected']} current={1} detail={onPhone ? 'Varial is opening. Approve the connection, then return to this page. We will check for your approval automatically.' : 'Connection link created. Scan the code in Varial and approve the connection.'} approval />
       <div className="connect-actions">
         <Button
           label="Copy link"
