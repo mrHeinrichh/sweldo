@@ -4,6 +4,7 @@ import { explorer } from '../../state/config'
 import { formatAmount } from '../../state/amount'
 import { Button } from '../../ui/Button'
 import { Collapse } from '../../ui/Notice'
+import { ActivityProgress, TransactionActivity } from '../../ui/ActivityProgress'
 
 /** "This wallet is empty" and "Enable USDC" prompts, each shown only while needed. */
 export function AccountSetupPrompts({ trustlineMessage, showTestUsdcFunding = true }: { trustlineMessage: string; showTestUsdcFunding?: boolean }) {
@@ -38,6 +39,8 @@ export function AccountSetupPromptsView({ account, trustlineMessage, showTestUsd
       {(prompt || account.fundingReceipt?.hash) && (
         <div className="account-prompts">
           {prompt}
+          {account.enabling && <TransactionActivity phase={account.transactionPhase ?? 'preparing'} title={`Enabling ${asset} in your wallet`} />}
+          {(account.funding || account.fundingAsset) && <ActivityProgress title="Adding your Testnet funds" steps={['Request funds', 'Check wallet balance']} current={0} detail="Requesting practice funds and checking your updated balance on Stellar. This may take a moment…" />}
           {account.error && <p className="t-caption account-error">{account.error}</p>}
           {account.fundingReceipt?.hash && <p className="t-caption" role="status">
             {account.fundingReceipt.status === 'pending' ? 'Funding confirmation pending. Check the transaction before retrying. ' : 'Test-USDC received. '}

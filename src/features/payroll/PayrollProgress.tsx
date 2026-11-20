@@ -25,7 +25,7 @@ export function PayrollProgress({ onSelect }: { onSelect: (section: number) => v
   const steps: { icon: LucideIcon; title: string; detail: string; done: boolean }[] = [
     { icon: UsersRound, title: 'Team', detail: teamDone ? `${rows.length} ${plural(rows.length, 'employee')} ready` : `${valid} of ${rows.length} wallets added`, done: teamDone },
     { icon: CalendarClock, title: 'Schedule', detail: `${state.payouts} ${plural(state.payouts, 'payout')}, ${CADENCES[state.cadence].label.toLowerCase()}`, done: scheduleDone },
-    { icon: LockKeyhole, title: 'Lock', detail: state.submitting ? 'Signing…' : locked ? 'Locked on Stellar' : 'One signature', done: locked && !state.submitting },
+    { icon: LockKeyhole, title: 'Lock', detail: state.submitting ? state.progress ?? 'Preparing…' : locked ? 'Locked on Stellar' : 'One signature', done: locked && !state.submitting },
   ]
   // The step you're on is current; others show whether they're complete.
   const statuses: Status[] = steps.map((step, i) => {

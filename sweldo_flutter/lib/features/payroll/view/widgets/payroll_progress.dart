@@ -68,7 +68,7 @@ class PayrollProgress extends StatelessWidget {
         icon: SwIcons.locked,
         title: 'Lock',
         detail: state.submitting
-            ? 'Signing…'
+            ? 'In progress…'
             : locked
             ? 'Locked on Stellar'
             : 'One signature',

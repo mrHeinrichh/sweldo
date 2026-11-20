@@ -29,24 +29,17 @@ class _SweldoAppState extends State<SweldoApp> {
     navigatorKey: walletNavigatorKey,
     initialLocation: widget.dependencies.config.storyDemo
         ? StoryPage.path
-        : AppRoute.overview.path,
+        : switch (widget.dependencies.store.readString('sweldo-role-v1')) {
+            'employer' => AppRoute.employer.path,
+            'employee' => AppRoute.employee.path,
+            _ => AppRoute.overview.path,
+          },
   );
 
   late final TourController _tour = TourController(
     steps: sweldoTour,
     store: widget.dependencies.store,
   );
-
-  @override
-  void initState() {
-    super.initState();
-    // First visit: offer the guide once (not in presentation mode).
-    if (!_tour.hasBeenSeen && !widget.dependencies.config.storyDemo) {
-      Future<void>.delayed(const Duration(milliseconds: 1200), () {
-        if (mounted && !_tour.isOpen) _tour.start();
-      });
-    }
-  }
 
   @override
   void dispose() {

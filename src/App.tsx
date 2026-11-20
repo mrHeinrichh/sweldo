@@ -2,6 +2,7 @@ import { lazy, Suspense } from 'react'
 import { Shell } from './app/Shell'
 import { STORY_PATH, useLocation } from './app/router'
 import { HomePage } from './features/home/HomePage'
+import { FirstUse } from './features/onboarding/FirstUse'
 import { TourProvider } from './features/tour/tour'
 import { AccountProvider } from './state/account'
 import { PayoutsProvider } from './state/payouts'
@@ -9,6 +10,7 @@ import { PayrollFormProvider } from './state/payroll-form'
 import { SchedulesProvider } from './state/schedules'
 import { ToastProvider } from './state/toast'
 import { WalletProvider } from './state/wallet'
+import { ActivityProgress } from './ui/ActivityProgress'
 
 const EmployerPage = lazy(() => import('./features/payroll/EmployerPage').then((m) => ({ default: m.EmployerPage })))
 const EmployeePage = lazy(() => import('./features/payouts/EmployeePage').then((m) => ({ default: m.EmployeePage })))
@@ -36,12 +38,14 @@ export default function App() {
           <PayrollFormProvider>
             <SchedulesProvider>
               <PayoutsProvider>
-                <TourProvider autoStart={!presenting}>
-                  <Shell>
-                    <Suspense fallback={null}>
-                      <Page />
-                    </Suspense>
-                  </Shell>
+                <TourProvider autoStart={false}>
+                  <FirstUse enabled={!presenting}>
+                    <Shell>
+                      <Suspense fallback={<ActivityProgress title="Opening your workspace" steps={['Role selected', 'Prepare your page']} current={1} detail="Getting your payroll workspace ready…" />}>
+                        <Page />
+                      </Suspense>
+                    </Shell>
+                  </FirstUse>
                 </TourProvider>
               </PayoutsProvider>
             </SchedulesProvider>

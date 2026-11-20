@@ -307,7 +307,9 @@ class _LockButton extends StatelessWidget {
         ? (context.up(Breakpoint.sm)
               ? 'Connect wallet to lock payroll'
               : 'Connect to lock')
-        : state.progress ?? 'Lock payroll on Stellar';
+        : state.submitting
+        ? 'Processing payroll…'
+        : 'Lock payroll on Stellar';
     return TourTarget(
       id: 'lock',
       child: SwButton(

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { ArrowRightLeft, ChevronDown, CircleCheck, Link, LoaderCircle, RefreshCw, X } from 'lucide-react'
+import { ArrowRightLeft, ChevronDown, CircleCheck, Link, RefreshCw, X } from 'lucide-react'
 import { claimAndConvert, SubmissionUncertain } from '../../lib/claim-convert-wallet'
 import { QUOTE_LIFETIME_MS, quoteClaimConversion, type ConversionPair, type ConversionQuote, type ConversionReceipt } from '../../lib/claim-convert'
 import { server } from '../../lib/stellar'
@@ -14,6 +14,8 @@ import { KeyText } from '../../ui/KeyText'
 import { AnimatedNotice, Collapse } from '../../ui/Notice'
 import { Sheet } from '../../ui/Sheet'
 import { ClaimedStamp } from '../../ui/Paper'
+import { ActivityProgress, TransactionActivity } from '../../ui/ActivityProgress'
+import type { TransactionPhase } from '../../lib/transaction-progress'
 
 type ConversionState = {
   quote: ConversionQuote | null
@@ -39,6 +41,7 @@ function ConversionContent({ address, payout, pair, onClose, onReceipt }: {
   address: string; payout: Payout; pair: ConversionPair; onClose: () => void; onReceipt: (receipt: ConversionReceipt) => void
 }) {
   const [state, setState] = useState<ConversionState>({ quote: null, loading: true, signing: false, error: null, uncertainHash: null })
+  const [phase, setPhase] = useState<TransactionPhase>('preparing')
   const request = useRef(0)
   const now = useNow()
   const locked = state.uncertainHash !== null
@@ -60,8 +63,9 @@ function ConversionContent({ address, payout, pair, onClose, onReceipt }: {
     const quote = state.quote
     if (!quote || state.signing || Date.now() >= quote.expiresAt) return
     setState({ quote, loading: false, signing: true, error: null, uncertainHash: null })
+    setPhase('preparing')
     try {
-      const receipt = await claimAndConvert(server, quote)
+      const receipt = await claimAndConvert(server, quote, setPhase)
       onReceipt(receipt)
     } catch (error) {
       if (error instanceof SubmissionUncertain) {
@@ -84,11 +88,9 @@ function ConversionContent({ address, payout, pair, onClose, onReceipt }: {
       <p className="t-body-sm m0">Claim {formatAmount(payout.amount)} test-USDC and receive PHPT in your connected wallet, in one transaction.</p>
       <div style={{ height: 'var(--s-xl)' }} />
       {state.loading && (
-        <div className="conversion-checking" aria-live="polite">
-          <LoaderCircle size={18} className="spin" />
-          <span className="t-body-sm">Checking the payout, trustlines and liquidity…</span>
-        </div>
+        <ActivityProgress title="Finding your conversion quote" steps={['Check payout and trustlines', 'Find a conversion route']} current={0} detail="Reading your payout, wallet trustlines and available liquidity on Stellar…" />
       )}
+      {state.signing && <TransactionActivity phase={phase} />}
       {!state.loading && quote && <QuoteDetails quote={quote} now={now} />}
       <AnimatedNotice data={state.error ? { tone: 'error', text: state.error } : null} gap="top" />
       {state.uncertainHash && (

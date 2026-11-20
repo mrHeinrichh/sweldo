@@ -11,6 +11,7 @@ import { useAccount } from './account'
 import { friendlyError } from './errors'
 import { prependSchedules, type PayrollSchedule } from './schedules-store'
 import { useWallet, type WalletSession } from './wallet'
+import type { TransactionPhase } from '../lib/transaction-progress'
 
 // Port of PayrollFormBloc: the "New payroll" form and its one-signature
 // submission. Lives above the router so it survives tab switches.
@@ -37,6 +38,7 @@ export type PayrollFormState = {
   firstPaydayAt: Date | null
   submitting: boolean
   progress: string | null
+  transactionPhase?: TransactionPhase
   notice: NoticeData | null
   lastProof: PayrollProof | null
   /** Wizard step: 0 team, 1 schedule, 2 review and lock. */
@@ -179,7 +181,7 @@ export function PayrollFormProvider({ children }: { children: ReactNode }) {
     const firstUnlock = firstPayday(new Date(), cadence, current.firstPaydayIn, current.firstPaydayAt)
     const totalLocked = rows.reduce((sum, row) => sum + (tryUnits(row.total) ?? 0n), 0n)
     submitting.current = true
-    update((previous) => ({ ...previous, submitting: true, progress: 'Confirm in your wallet…', notice: null }))
+    update((previous) => ({ ...previous, submitting: true, transactionPhase: 'preparing', progress: 'Preparing payroll…', notice: null }))
     try {
       const result = await createBatchSchedule({
         employer: session.address,
@@ -188,6 +190,7 @@ export function PayrollFormProvider({ children }: { children: ReactNode }) {
         firstUnlock,
         intervalSeconds: CADENCES[cadence].seconds,
         asset: payrollAsset,
+        onProgress: (transactionPhase) => update((previous) => ({ ...previous, transactionPhase, progress: ({ preparing: 'Preparing payroll…', approval: 'Approve in your wallet…', submitting: 'Confirming on Stellar…', receipt: 'Reading receipt…', registry: 'Recording proof…' })[transactionPhase] })),
       })
       const createdAt = new Date().toISOString()
       const schedules: PayrollSchedule[] = rows.map((row, index) => ({
@@ -211,7 +214,7 @@ export function PayrollFormProvider({ children }: { children: ReactNode }) {
       let registryWarning = ''
       const first = schedules[0]
       if (hasRegistry && first.balanceIds.length > 0) {
-        update((previous) => ({ ...previous, progress: 'Recording proof in the registry…' }))
+        update((previous) => ({ ...previous, transactionPhase: 'registry', progress: 'Recording proof in the registry…' }))
         try {
           registryProof = await recordScheduleProof({
             employer: session.address,

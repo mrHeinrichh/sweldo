@@ -20,11 +20,4 @@ export const conversionPair = configuredConversion(env)
 export const MAX_OPERATIONS = 100
 export const MAX_PAYOUTS_PER_EMPLOYEE = 50
 
-const EXPLORER = 'https://stellar.expert/explorer/testnet'
-export const explorer = {
-  home: EXPLORER,
-  transaction: (hash: string) => `${EXPLORER}/tx/${hash}`,
-  claimableBalance: (id: string) => `${EXPLORER}/claimable-balance/${id}`,
-  contract: (id: string) => `${EXPLORER}/contract/${id}`,
-  account: (id: string) => `${EXPLORER}/account/${id}`,
-}
+export { explorer } from '../lib/explorer'

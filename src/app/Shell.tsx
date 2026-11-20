@@ -30,7 +30,7 @@ export function Shell({ children }: { children: ReactNode }) {
     <div className="shell">
       <header className="top-bar">
         <ContentWidth className="top-bar-row">
-          <SweldoLogo onClick={() => navigate('/')} />
+          <SweldoLogo compact={!sm} onClick={() => navigate('/')} />
           {wide && (
             <nav className="top-nav" aria-label="Main">
               {ROUTES.map((route) => {

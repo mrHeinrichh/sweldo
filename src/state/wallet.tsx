@@ -6,6 +6,7 @@ import { formatAmount } from './amount'
 import { friendlyError, isNotFound } from './errors'
 import { useToast } from './toast'
 import { Networks } from '@stellar/stellar-sdk'
+import { pendingWallet } from '../lib/wallets/pending'
 
 // Wallet session and the optional mobile pairing request.
 
@@ -50,33 +51,39 @@ export function WalletProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let cancelled = false
+    const controller = new AbortController()
+    const timeout = window.setTimeout(() => controller.abort(), 12_000)
     setStatus('restoring')
-    wallets.restore().then(async (restored) => {
-      if (cancelled) return
+    pendingWallet(wallets.restore(controller.signal), controller.signal).then(async (restored) => {
+      if (cancelled || pairing.current) return
+      window.clearTimeout(timeout)
       if (!restored) { setStatus('disconnected'); return }
       const next = toSession(restored)
       setSession(next)
       setStatus('connected')
       try { setXlmBalance(await getXlmBalance(next.address)) } catch { /* unfunded wallets get the funding prompt */ }
-    }).catch(() => { if (!cancelled) setStatus('disconnected') })
+    }).catch(() => { if (!cancelled && !pairing.current) setStatus('disconnected') }).finally(() => window.clearTimeout(timeout))
     const off = wallets.onWalletDisconnected(() => {
       setSession(null)
       setXlmBalance(null)
       setStatus('disconnected')
     })
-    return () => { cancelled = true; off() }
+    return () => { cancelled = true; controller.abort(); window.clearTimeout(timeout); off() }
   }, [])
 
   const connect = useCallback(async (kind: WalletKind) => {
     if (statusRef.current === 'connecting') return
     pairing.current?.abort()
     const controller = new AbortController()
+    const timeout = window.setTimeout(() => controller.abort(new Error('Your wallet has not replied after 2 minutes. Reopen Varial and approve the connection, or try connecting again.')), 120_000)
     pairing.current = controller
+    statusRef.current = 'connecting'
     setStatus('connecting')
     setConnectingKind(kind)
     setPairingUri(null)
     try {
-      const connected = toSession(await wallets.connect(kind, { onPairingUri: setPairingUri, signal: controller.signal }))
+      const connected = toSession(await pendingWallet(wallets.connect(kind, { onPairingUri: (uri) => { if (!controller.signal.aborted) setPairingUri(uri) }, signal: controller.signal }), controller.signal))
+      window.clearTimeout(timeout)
       if (controller.signal.aborted) return
       setSession(connected)
       setXlmBalance(null)
@@ -96,7 +103,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       setXlmBalance(balance)
       toast(text)
     } catch (error) {
-      if (controller.signal.aborted) return
+      if (controller.signal.aborted && controller.signal.reason?.name === 'AbortError') return
       setStatus(sessionRef.current ? 'connected' : 'disconnected')
       setConnectingKind(null)
       setPairingUri(null)
@@ -105,6 +112,8 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         isError: true,
         action: missing ? { label: 'Get Varial', href: 'https://varialwallet.com/' } : undefined,
       })
+    } finally {
+      window.clearTimeout(timeout)
     }
   }, [toast])
 

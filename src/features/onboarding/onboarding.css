@@ -1,0 +1,37 @@
+.first-use-dialog { width: 100%; min-width: 0; max-width: 540px; padding: 30px; }
+.first-use-step { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; color: var(--stamp); font: 600 12px/1.4 var(--font); }
+.first-use-step > span { display: inline-grid; place-items: center; width: 23px; height: 23px; background: var(--stamp-wash); border-radius: 50%; }
+.first-use-step > svg { color: var(--payday); }
+.first-use-title { margin: 22px 0 10px; color: var(--ink); font: 800 30px/1.14 var(--font); letter-spacing: -.7px; }
+.first-use-lede { max-width: 430px; }
+.first-use-roles { display: grid; gap: 12px; margin: 24px 0 20px; }
+.first-use-role { display: flex; align-items: center; gap: 14px; width: 100%; padding: 18px; text-align: left; border: 1px solid var(--rule); border-radius: var(--r-panel); background: #fff; }
+.first-use-role:hover { border-color: var(--stamp); background: var(--stamp-wash); }
+.first-use-role-icon { display: inline-grid; place-items: center; flex: none; width: 46px; height: 46px; background: var(--stamp-wash); border-radius: 12px; color: var(--stamp); }
+.first-use-role-copy { flex: 1; min-width: 0; display: grid; gap: 5px; }
+.first-use-role-arrow { flex: none; color: var(--stamp); }
+.first-use-footnote { display: flex; justify-content: center; gap: 7px; text-align: center; }
+.first-use-footnote > svg { flex: none; }
+.first-use-wallet { text-align: center; }
+.first-use-wallet .first-use-step { justify-content: center; }
+.first-use-wallet .first-use-title { margin-top: 16px; }
+.first-use-wallet-icon { display: inline-grid; place-items: center; margin-top: 26px; width: 68px; height: 68px; color: #fff; background: var(--stamp); border-radius: 20px; box-shadow: 0 10px 24px -9px rgba(91,60,196,.5); }
+.first-use-actions { display: grid; gap: 6px; margin: 24px 0 15px; }
+@media (max-width: 479px) {
+  .first-use-dialog { padding: 22px 18px; }
+  .first-use-title { font-size: 25px; }
+  .first-use-role { gap: 10px; padding: 14px 12px; }
+  .first-use-role-icon { width: 36px; height: 42px; }
+  .first-use-role-arrow { width: 16px; }
+  .first-use-roles { margin-top: 20px; }
+}
+@media (max-width: 359px) {
+  .first-use-dialog { padding: 20px 16px; }
+  .first-use-title { font-size: 22px; margin-top: 16px; }
+  .first-use-role { padding: 12px; }
+  .first-use-role-icon { display: none; }
+  .first-use-role-copy .t-subtitle { font-size: 15px; }
+  .first-use-roles { margin: 16px 0; }
+  .first-use-wallet-icon { width: 56px; height: 56px; margin-top: 18px; }
+  .first-use-actions { margin-top: 18px; }
+}

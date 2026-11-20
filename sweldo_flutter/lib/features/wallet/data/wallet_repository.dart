@@ -4,6 +4,7 @@ import '../../../core/error/app_exception.dart';
 import '../../../core/storage/local_store.dart';
 import '../../../core/stellar/stellar_network.dart';
 import '../../../core/stellar/transaction_signer.dart';
+import '../../../core/stellar/transaction_activity.dart';
 import '../domain/wallet_session.dart';
 import 'wallet_connector.dart';
 import 'signing_guard.dart';
@@ -54,7 +55,13 @@ class WalletRepository implements TransactionSigner {
     final kind = WalletKind.values.where((k) => k.name == last).firstOrNull;
     final connector = kind == null ? null : _connectors[kind];
     if (connector == null || !connector.isAvailable) return null;
-    final session = await connector.restore();
+    final WalletSession? session;
+    try {
+      session = await connector.restore().timeout(const Duration(seconds: 15));
+    } on TimeoutException {
+      if (version == _version) _version++;
+      return null;
+    }
     if (version != _version) return null;
     if (session != null) _setSession(session, connector);
     return session;
@@ -75,10 +82,18 @@ class WalletRepository implements TransactionSigner {
     _pending = connector;
     late final WalletSession session;
     try {
-      session = await connector.connect(
-        onPairingUri: (uri) {
-          if (_version == version) onPairingUri?.call(uri);
-        },
+      session = await connector
+          .connect(
+            onPairingUri: (uri) {
+              if (_version == version) onPairingUri?.call(uri);
+            },
+          )
+          .timeout(const Duration(minutes: 2));
+    } on TimeoutException {
+      if (_version == version) cancelPendingConnection();
+      throw const WalletException(
+        'The wallet has not approved the connection yet. Open Varial, approve '
+        'the request, then reconnect if needed.',
       );
     } finally {
       if (_version == version) _pending = null;
@@ -132,6 +147,22 @@ class WalletRepository implements TransactionSigner {
 
   @override
   Future<String> signTransaction(
+    String envelopeXdr, {
+    required String address,
+  }) async {
+    final ownedActivity = transactionActivity.value == null;
+    final token = ownedActivity
+        ? beginTransactionActivity()
+        : transactionActivity.value!.startedAt;
+    updateTransactionActivity(token, TransactionStage.approval);
+    try {
+      return await _signReviewedTransaction(envelopeXdr, address: address);
+    } finally {
+      if (ownedActivity) endTransactionActivity(token);
+    }
+  }
+
+  Future<String> _signReviewedTransaction(
     String envelopeXdr, {
     required String address,
   }) async {

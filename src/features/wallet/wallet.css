@@ -56,6 +56,7 @@
 .connect-option:not(:disabled):hover .connect-option-chevron { color: var(--stamp); transform: translateX(6px); }
 .connect-get { margin-top: var(--s-sm) !important; display: flex; align-items: center; flex-wrap: wrap; gap: 4px; }
 .connect-get-link { font-size: 14px; }
+.wallet-recommended { display: inline-block; margin-left: 8px; padding: 3px 6px; border-radius: 4px; background: var(--stamp-wash); color: var(--stamp); font-size: 10px; vertical-align: middle; }
 .connect-qr {
   align-self: center; width: 240px; height: 240px; margin-top: var(--s-xl); padding: var(--s-md);
   background: #fff; border: 1px solid var(--rule); border-radius: var(--r-panel);

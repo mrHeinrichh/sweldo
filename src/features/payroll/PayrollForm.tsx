@@ -18,6 +18,7 @@ import { PayrollProofCard } from './PayrollProofCard'
 import { InsightChip, PayScheduleBuilder, ScheduleInsights } from './PayScheduleBuilder'
 import { RecipientRow } from './RecipientRow'
 import { RosterImport } from './RosterImport'
+import { TransactionActivity } from '../../ui/ActivityProgress'
 
 const STEPS: { title: string; description: string; next?: string }[] = [
   { title: 'Who are you paying?', description: 'Add each person with their Stellar wallet and the total to pay them.', next: 'Continue to schedule' },
@@ -82,6 +83,7 @@ export function PayrollForm() {
       <div ref={top} className="wizard-progress"><PayrollProgress onSelect={(index) => advance(index as PayrollStep)} /></div>
       <AccountSetupPrompts trustlineMessage={`Add a ${assetLabel} trustline so this wallet can hold and lock ${assetLabel} for payroll.`} />
       <AnimatedNotice data={state.notice} />
+      {state.submitting && <TransactionActivity phase={state.transactionPhase ?? 'preparing'} />}
 
       <section key={locked ? 'locked' : step} className={`wizard-step ${direction}`} aria-labelledby="wizard-title">
         <h2 id="wizard-title" className="wizard-title m0">{heading.title}</h2>
