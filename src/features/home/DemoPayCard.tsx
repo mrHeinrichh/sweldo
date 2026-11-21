@@ -32,11 +32,11 @@ export function DemoPayCard({ assetLabel }: { assetLabel: string }) {
       <Tilt3D maxTilt={7}>
         <PayrollPaper
           elevated
-          header={<PaperHeader title="Ana Santos's pay" trailing={<span className="t-figures t-muted">1,200 {assetLabel} locked</span>} />}
+          header={<PaperHeader title="Ana Santos's pay" trailing={<NextUnlock rows={rows} />} />}
         >
           {rows.map((row, index) => (
             // Rows feed in top to bottom, like a printer advancing the form.
-            <div key={index} className={reduced ? '' : 'demo-print'} style={{ animationDelay: `${180 + index * 110}ms` }}>
+            <div key={index} className={reduced ? '' : 'demo-print'} style={{ animationDelay: `${520 + index * 110}ms` }}>
               <DemoRow
                 payday={row.payday}
                 status={row.status}
@@ -59,6 +59,23 @@ export function DemoPayCard({ assetLabel }: { assetLabel: string }) {
         )}
       </div>
     </div>
+  )
+}
+
+/**
+ * The hero's live number: how long until the next locked payout opens.
+ * Real — it counts down to an unlock in the sample schedule below, and
+ * the row it belongs to opens while you watch.
+ */
+function NextUnlock({ rows }: { rows: { payday: Date; status: Status }[] }) {
+  const now = useNow()
+  const next = rows.find((row) => row.payday.getTime() > now.getTime())
+  if (!next) return null
+  return (
+    <span className="demo-next">
+      <span className="t-caption demo-next-label">Next unlock</span>
+      <span className="demo-next-value">{countdownLabel(next.payday.getTime() - now.getTime())}</span>
+    </span>
   )
 }
 

@@ -19,8 +19,13 @@ Sweldo follows the spirit of Apple's Human Interface Guidelines: clarity, defere
 5. **Depth with purpose.** 3D, tilt and shadow belong to objects you could hold (the phone, a
    payout ticket, a rubber stamp), never to text or panels.
 6. **Motion answers people.** Transitions show where you went: steps slide in the direction you
-   move, a claimed payout flips to its receipt, a stamp lands when something is final. The only
-   unprompted motion is the demo payroll printing in on the home page.
+   move, a claimed payout flips to its receipt, a stamp lands when something is final.
+   Two surfaces, two budgets. In the working app — payroll, payouts, wallet, and every sheet
+   and dialog — motion only ever answers what a person did. The overview page also carries one
+   orchestrated load sequence that runs once and stops, the live numbers that keep ticking, and
+   reveals driven by scroll position rather than fired on arrival, so they run backwards when
+   the reader scrolls back up. Nothing anywhere fades and slides up merely because it entered
+   the viewport.
 7. **Respect everyone.** 44pt touch targets, visible keyboard focus, AA contrast, reduced motion
    honoured everywhere.
 
@@ -35,6 +40,11 @@ These read as templated or "AI-made" and are off-brand for Sweldo:
 - Meta strings joined with middle dots, arrows appended to button labels.
 - Controls that exist only to demo the app (for example a "Shuffle" button). Demo data should
   simply be there.
+- A fade-and-slide-up on every section as it scrolls into view. It is the clearest tell of a
+  generated page. One orchestrated load, or a reveal the scroll drives, instead.
+- The generated-page palettes: warm cream with a terracotta accent, or near-black with one acid
+  accent. Tinted near-black (#0B0B0B, #111) standing in for black.
+- Numbered markers (01 / 02 / 03) on anything that isn't genuinely a sequence.
 - Lorem ipsum or fake numbers that don't add up. Every sample payroll splits evenly.
 
 ## Tokens
@@ -71,6 +81,14 @@ Use these sparingly; each one means something.
 - **Punch slots:** empty while locked, ringed when payday comes, filled violet once claimed.
 - **The violet stamp:** only for something final (Claimed, Locked, Converted).
 - **The iPhone frame:** whenever the product is shown on a phone.
+- **The page margin:** on the overview page only, the tractor-feed edge runs the full height of
+  the window, with one punch slot per section — empty while a section is ahead of you, ringed
+  for the one you are in, punched violet once you have passed it, and the feed line filling as
+  the paper advances. On phones it keeps the feed line alone, because the sheet's own sprocket
+  margin is already on screen a few millimetres away.
+- **Live numbers:** the next unlock counting down on the sample schedule, and the Testnet ledger
+  closing in the hero. Both are real and both keep moving. A number that cannot be true is never
+  shown, and a number that is only decoration is not a number worth printing.
 
 ## Patterns
 
