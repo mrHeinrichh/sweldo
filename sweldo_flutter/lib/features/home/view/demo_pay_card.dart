@@ -64,10 +64,7 @@ class _DemoPayCardState extends State<DemoPayCard> {
             elevated: true,
             header: PaperHeader(
               title: "Ana Santos's pay",
-              trailing: Text(
-                '1,200 ${widget.assetLabel} locked',
-                style: SwType.figures.copyWith(color: SwColors.inkMuted),
-              ),
+              trailing: _NextUnlock(rows: _rows),
             ),
             children: rows,
           ),
@@ -107,7 +104,7 @@ class _DemoPayCardState extends State<DemoPayCard> {
   Widget _printIn(Widget child, {required int index, required bool reduced}) {
     if (reduced) return child;
     return child
-        .animate(delay: (180 + index * 110).ms)
+        .animate(delay: (520 + index * 110).ms)
         .fadeIn(duration: SwMotion.print, curve: SwMotion.enter)
         .moveY(
           begin: -12,
@@ -115,6 +112,53 @@ class _DemoPayCardState extends State<DemoPayCard> {
           duration: SwMotion.print,
           curve: SwMotion.enter,
         );
+  }
+}
+
+/// The hero's live number: how long until the next locked payout opens.
+/// Real — it counts down to an unlock in the sample schedule below, and the
+/// row it belongs to opens while you watch. The web client prints the same
+/// number from `NextUnlock`.
+class _NextUnlock extends StatelessWidget {
+  const _NextUnlock({required this.rows});
+
+  final List<_DemoRow> rows;
+
+  @override
+  Widget build(BuildContext context) {
+    return SecondTicker(
+      builder: (context, now) {
+        final next = rows
+            .where((row) => row.payday.isAfter(now))
+            .fold<DateTime?>(null, (soonest, row) {
+              if (soonest == null || row.payday.isBefore(soonest)) {
+                return row.payday;
+              }
+              return soonest;
+            });
+        if (next == null) return const SizedBox.shrink();
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'Next unlock',
+              style: SwType.caption.copyWith(color: SwColors.inkFaint),
+            ),
+            const SizedBox(height: 1),
+            Text(
+              countdownLabel(next.difference(now)),
+              style: SwType.title.copyWith(
+                fontWeight: FontWeight.w800,
+                letterSpacing: -0.4,
+                height: 1,
+                fontFeatures: const [FontFeature.tabularFigures()],
+              ),
+            ),
+          ],
+        );
+      },
+    );
   }
 }
 
